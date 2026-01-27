@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": ".",
+			"name": "OpenWrt Meta-Repo"
+		},
+		{
+			"path": "openwrt-builder"
+		},
+		{
+			"path": "openwrt-config"
+		},
+		{
+			"path": "openwrt-secrets"
+		}
+	],
+	"settings": {}
+}

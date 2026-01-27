@@ -1,0 +1,8 @@
+# Ignore sub-repositories to avoid submodule complexity
+openwrt-builder/
+openwrt-config/
+openwrt-secrets/
+
+# Standard ignores
+.DS_Store
+*.log
