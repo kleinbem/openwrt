@@ -1,0 +1,78 @@
+# Network Transition Plan — flat → VLAN-segmented 10.x
+
+**Decision (2026-07-08):** stay on `10.x` long-term, segment it into per-purpose
+VLANs, and bring the BPI-R4 in as the gateway by **bench-provisioning then
+swapping** it for the current 10.x router. Rationale: many devices + IoT — a
+flat `/16` gives addresses but no isolation; VLANs stop a compromised IoT
+device from reaching infra/servers.
+
+## Addressing
+
+Gateway owns `.1` in every subnet. The fleet compute (Tang, AdGuard, servers)
+stays in the **infra** VLAN so headless LUKS unlock keeps working within-zone.
+
+| VLAN | Subnet         | Zone     | Purpose                                   |
+|-----:|----------------|----------|-------------------------------------------|
+| 1    | 10.0.0.0/24    | infra    | fleet servers: Tang `.5`, AdGuard `.21`, core-pi `.22`, orin `.12`, gateway `.1` |
+| 10   | 10.0.10.0/24   | trusted  | laptops, phones, workstations             |
+| 20   | 10.0.20.0/24   | iot      | smart-home gear — internet + DNS only     |
+| 30   | 10.0.30.0/24   | cameras  | cameras/NVR — no internet                 |
+| 40   | 10.0.40.0/24   | guest    | guest devices — internet only             |
+
+Room to grow: each is a `/24` (254 hosts) carved from `10.0.0.0/8`; bump any to
+a `/16` (e.g. `10.20.0.0/16` for IoT) later without renumbering the others.
+
+## Firewall zone matrix
+
+| From → To | infra | trusted | iot | cameras | guest | wan |
+|-----------|:-----:|:-------:|:---:|:-------:|:-----:|:---:|
+| infra     |  —    |   ✓     |  ✓  |   ✓     |  ✗    |  ✓  |
+| trusted   |  ✓    |   —     |  ✓  |   ✓     |  ✗    |  ✓  |
+| iot       | DNS¹  |   ✗     |  —  |   ✗     |  ✗    |  ✓  |
+| cameras   | DNS¹  |   ✗     |  ✗  |   —     |  ✗    |  ✗² |
+| guest     | DNS¹  |   ✗     |  ✗  |   ✗     |  —    |  ✓  |
+
+¹ **DNS exception:** allow UDP/TCP 53 (+853) from iot/cameras/guest to AdGuard
+  `10.0.0.21` only — so every VLAN resolves via AdGuard without opening infra.
+² cameras get **no WAN** (no phone-home); a trusted host or NVR pulls streams.
+
+**LUKS constraint (do not break):** orin/core-pi/hass-pi unlock LUKS via clevis
+bound to `http://10.0.0.5:7654` (Tang). Tang AND those hosts all live in **infra
+VLAN 1**, so unlock is within-zone — segmentation doesn't touch it. Never move
+Tang or a headless-unlock host out of infra without moving the clevis binding.
+
+## Bench-provision → swap runbook
+
+1. **Bench:** BPI-R4 on an isolated bench, laptop direct-connected to a LAN
+   port. Firmware first-boot default stays `192.168.1.1/24` (bench-only address
+   — laptop sits on `192.168.1.x`).
+2. **Provision:** `just provision` (or `just config::configure router-a`). The
+   network role builds the VLANs, firewall zones, per-VLAN DHCP, and Wi-Fi from
+   the vars in `openwrt-config/ansible/group_vars/all.yml`. Applying it moves the
+   router's management IP to `10.0.0.1` and drops the bench SSH session
+   (expected — reconnect at `10.0.0.1` on an untagged infra port).
+3. **Verify offline:** SSH at `10.0.0.1`; a client on each VLAN pulls a lease in
+   the right subnet; Wi-Fi SSIDs up; `iot`/`guest` can reach the internet but not
+   `trusted`; AdGuard resolves from every VLAN.
+4. **Cut over (maintenance window):** power down the current router, move its WAN
+   uplink + LAN trunk to the BPI-R4. It boots as `10.0.0.1`; devices renew leases
+   into their VLANs and come back online.
+5. **Post-swap:** point the inventory at `10.0.0.1` (it lists the bench address
+   until now — see `../nix/nix-config/inventory.nix`, the generator source).
+
+## Open items — confirm before the VLAN/switch config can be authored
+
+The switch/radio config is hardware-specific; these must be pinned first
+(BPI-R4 DSA port names + Wi-Fi 7 radios differ from the old swconfig world):
+
+1. **Port → zone map:** which physical ports (lan1/lan2/lan3, sfp1/sfp2) are
+   untagged in which VLAN, and which port is the management/infra uplink. Is the
+   AP (router-b, upstairs) fed by a tagged trunk?
+2. **SSID → VLAN map + names:** e.g. `Home`→trusted, `Home-IoT`→iot,
+   `Home-Guest`→guest. Which bands (2.4/5/6 GHz EHT) per SSID?
+3. **Wi-Fi regulatory country code** (e.g. `IE`/`DE`) — required for 6 GHz.
+4. **Camera VLAN:** keep it? If so, which host runs the NVR (the one exception
+   cameras may reach)? Drop VLAN 30 if there are no cameras yet.
+5. **WAN uplink:** confirm it's `eth1` (current `uci-defaults`) vs an SFP port.
+6. **Preserve list:** any static leases / port-forwards on the current router
+   beyond the fleet that must carry over.
