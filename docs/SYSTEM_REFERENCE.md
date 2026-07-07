@@ -21,7 +21,7 @@ This document serves as the ground truth for the OpenWrt router configuration.
 - **NixOS Brain (router-1)**: 192.168.1.5 (Running on Router B)
 
 ## Wireless (Wi-Fi 7)
-- **SSID**: MyHome_10G
+- **SSID / passphrase**: in `openwrt-secrets/ansible-vars.yaml` (sops)
 - **Security**: WPA3 (SAE)
 - **Band**: 2.4GHz / 5GHz / 6GHz (Tri-band)
 
