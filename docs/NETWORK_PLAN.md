@@ -36,10 +36,20 @@ a `/16` (e.g. `10.20.0.0/16` for IoT) later without renumbering the others.
   `10.0.0.21` only — so every VLAN resolves via AdGuard without opening infra.
 ² cameras get **no WAN** (no phone-home); a trusted host or NVR pulls streams.
 
-**LUKS constraint (do not break):** orin/core-pi/hass-pi unlock LUKS via clevis
-bound to `http://10.0.0.5:7654` (Tang). Tang AND those hosts all live in **infra
-VLAN 1**, so unlock is within-zone — segmentation doesn't touch it. Never move
-Tang or a headless-unlock host out of infra without moving the clevis binding.
+**LUKS constraint (do not break):** headless hosts unlock via clevis SSS with
+threshold **t=1** across a **Tang mesh** — every capable fleet host runs Tang
+(nixos-nvme `.5`, orin `.12`, core-pi `.22`, hass-pi `.21`, nasbook, …), and
+reaching **any one** of them unlocks. The mesh and the unlock hosts all live in
+**infra VLAN 1**, so unlock is within-zone and gets *more* resilient as you add
+fleet hosts — segmentation doesn't touch it. Rule: keep every headless-unlock
+host in the same zone as at least one Tang server it's bound to. If a Tang
+server ever sits in another VLAN, infra must allow `tcp/7654` to it
+(infra↔trusted is already open in the matrix).
+
+> Note: the current JWE binds only 3 of the Tang servers (`.5`/`.21`/`.12`),
+> while 6 hosts run Tang. To fully realize "every device is a Tang server,"
+> `generate-jwe.sh` should bind the inventory's full `tangServers` list and the
+> JWEs be regenerated (ties into the parked clevis re-bind / rotation).
 
 ## Bench-provision → swap runbook
 
