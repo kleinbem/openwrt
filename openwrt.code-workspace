@@ -2,17 +2,139 @@
 	"folders": [
 		{
 			"path": ".",
-			"name": "OpenWrt Meta-Repo"
+			"name": "openwrt"
 		},
 		{
-			"path": "openwrt-builder"
+			"path": "openwrt-builder",
+			"name": "Builder"
 		},
 		{
-			"path": "openwrt-config"
+			"path": "openwrt-config",
+			"name": "Config (Ansible)"
 		},
 		{
-			"path": "openwrt-secrets"
+			"path": "openwrt-secrets",
+			"name": "Secrets"
+		},
+		{
+			"name": "Antigravity (Memory)",
+			"path": "/home/martin/.gemini/antigravity"
+		},
+		{
+			"name": "Desktop Launchers",
+			"path": "/home/martin/.local/share/applications"
+		},
+		{
+			"name": "System Persistence",
+			"path": "/nix/persist"
+		},
+		{
+			"name": "User Systemd Units",
+			"path": "/home/martin/.config/systemd/user"
+		},
+		{
+			"name": "SSH Config",
+			"path": "/home/martin/.ssh"
+		},
+		{
+			"name": "Browser Profiles",
+			"path": "/home/martin/.mozilla/firefox"
+		},
+		{
+			"name": "Obsidian Vault",
+			"path": "/home/martin/GoogleDrive/Obsidian/MyVault"
+		},
+		{
+			"name": "System Logs",
+			"path": "/var/log"
+		},
+		{
+			"name": "Container State",
+			"path": "/var/lib/containers"
+		},
+		{
+			"name": "Nix Profiles",
+			"path": "/nix/var/nix/profiles"
+		},
+		{
+			"name": "Global Nix Config",
+			"path": "/etc/nix"
+		},
+		{
+			"name": "Sops State",
+			"path": "/var/lib/sops"
+		},
+		{
+			"name": "Local Bin",
+			"path": "/home/martin/.local/bin"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"editor.formatOnSave": true,
+		"files.watcherExclude": {
+			"**/result": true,
+			"**/result-*": true,
+			"**/.direnv": true
+		},
+		"files.exclude": {
+			"**/.git": true,
+			"**/.DS_Store": true,
+			"**/*.direnv": true,
+			"**/result": true,
+			"**/result-*": true,
+			"**/node_modules": true,
+			"nix-*": true
+		},
+		"files.associations": {
+			"Justfile": "makefile",
+			"*.nix": "nix"
+		},
+		"[nix]": {
+			"editor.defaultFormatter": "jnoortheen.nix-ide"
+		},
+		"nix.enableLanguageServer": true,
+		"nix.serverPath": "nixd",
+		"nix.formatterPath": "nixfmt",
+		"nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
+		"nixEnvSelector.useFlakes": true
+	},
+	"extensions": {
+		"recommendations": [
+			"bbenoist.nix",
+			"skellock.just",
+			"mkhl.direnv",
+			"redhat.ansible",
+			"signageos.signageos-vscode-sops",
+			"jnoortheen.nix-ide"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Update All Repos",
+				"type": "shell",
+				"command": "just update",
+				"group": {
+					"kind": "build",
+					"isDefault": false
+				},
+				"problemMatcher": []
+			},
+			{
+				"label": "Check Status",
+				"type": "shell",
+				"command": "just status",
+				"group": "test",
+				"problemMatcher": []
+			},
+			{
+				"label": "Build Image",
+				"type": "shell",
+				"command": "just build",
+				"group": "build",
+				"problemMatcher": []
+			}
+		]
+	}
 }
