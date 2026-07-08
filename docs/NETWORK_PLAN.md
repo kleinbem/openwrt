@@ -22,6 +22,34 @@ stays in the **infra** VLAN so headless LUKS unlock keeps working within-zone.
 Room to grow: each is a `/24` (254 hosts) carved from `10.0.0.0/8`; bump any to
 a `/16` (e.g. `10.20.0.0/16` for IoT) later without renumbering the others.
 
+### Infra VLAN 1 fixed addresses (`10.0.0.0/24`)
+
+The whole fleet is 10.x — no `192.168.x` remains. Network layer in `.1–.9`,
+servers/fleet keep their established octets, DHCP pool is `.100–.199`.
+
+| IP        | Host          | Role                                   |
+|-----------|---------------|----------------------------------------|
+| 10.0.0.1  | core-gateway  | BPI-R4 main gateway (downstairs)       |
+| 10.0.0.2  | mesh-node     | BPI-R4 AP / LXC host (upstairs)        |
+| 10.0.0.3  | router-1      | NixOS LXC brain                        |
+| 10.0.0.4  | router-2      | NixOS LXC brain                        |
+| 10.0.0.5  | nixos-nvme    | workstation + Tang (LUKS unlock anchor)|
+| 10.0.0.6  | mesh-node-2   | 2nd BPI-R4 (not yet active)            |
+| 10.0.0.7  | net-brain     | NixOS LXC on Router B (was `.5`¹)      |
+| 10.0.0.12 | orin-nano     | AI edge + Tang                         |
+| 10.0.0.21 | hass-pi       | Home Assistant + AdGuard + Tang        |
+| 10.0.0.22 | core-pi       | cache entrypoint + Tang                |
+| 10.0.0.30 | nasbook       | NAS + Tang                             |
+
+¹ net-brain moved off `.5` — that octet is nixos-nvme/Tang, which can't move
+  (the clevis LUKS binding is anchored there). Source of truth:
+  `../nix/nix-config/inventory.nix`.
+
+> Bench bootstrap: the BPI-R4 firmware still first-boots at `192.168.1.1` (the
+> ImageBuilder default). For the one-time bench provisioning, reach it there
+> (`-e ansible_host=192.168.1.1`); the role then moves it to `10.0.0.1`, after
+> which the inventory address is correct for all subsequent runs.
+
 ## Firewall zone matrix
 
 | From → To | infra | trusted | iot | cameras | guest | wan |
