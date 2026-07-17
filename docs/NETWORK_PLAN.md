@@ -84,18 +84,24 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
 1. **Bench:** BPI-R4 on an isolated bench, laptop direct-connected to a LAN
    port. Firmware first-boot default stays `192.168.1.1/24` (bench-only address
    — laptop sits on `192.168.1.x`).
-2. **Provision:** `just provision` (or `just config::configure core-gateway`). The
+2. **RAM limit (both boards):** append `mem=2048M` to the kernel cmdline via
+   the U-Boot environment (serial console at the bench). MT7988 hardware
+   flow-offloading drops/blocks packets when the full 4 GiB is addressed —
+   upstream-confirmed, unresolved; 2 GiB is the known-good state. Optional
+   later experiment: ap-upstairs (no NAT/PPE role, WED off) back to 4 GiB for
+   more LXC headroom — bench-soak first.
+3. **Provision:** `just provision` (or `just config::configure core-gateway`). The
    network role builds the VLANs, firewall zones, per-VLAN DHCP, and Wi-Fi from
    the vars in `openwrt-config/ansible/group_vars/all.yml`. Applying it moves the
    router's management IP to `10.0.0.1` and drops the bench SSH session
    (expected — reconnect at `10.0.0.1` on an untagged infra port).
-3. **Verify offline:** SSH at `10.0.0.1`; a client on each VLAN pulls a lease in
+4. **Verify offline:** SSH at `10.0.0.1`; a client on each VLAN pulls a lease in
    the right subnet; Wi-Fi SSIDs up; `iot`/`guest` can reach the internet but not
    `trusted`; AdGuard resolves from every VLAN.
-4. **Cut over (maintenance window):** power down the current router, move its WAN
+5. **Cut over (maintenance window):** power down the current router, move its WAN
    uplink + LAN trunk to the BPI-R4. It boots as `10.0.0.1`; devices renew leases
    into their VLANs and come back online.
-5. **Post-swap:** point the inventory at `10.0.0.1` (it lists the bench address
+6. **Post-swap:** point the inventory at `10.0.0.1` (it lists the bench address
    until now — see `../nix/nix-config/inventory.nix`, the generator source).
 
 ## Open items — status
@@ -116,8 +122,8 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
    (2.4+5), `<ssid>-Guest`→guest (2.4+5, isolated). WPA3 `sae-mixed` (pure SAE on
    6 GHz), 802.11r + DAWN. Map lives in
    `openwrt-config/ansible/group_vars/all.yml` (`wifi_networks`); SSID base +
-   passphrases in openwrt-secrets. Until the network role lands the SSIDs
-   attach to flat `lan` (`vlan_segmentation_live: false`).
+   passphrases in openwrt-secrets. `roles/network` is live
+   (`vlan_segmentation_live: true`) — SSIDs attach to their VLANs.
 3. ~~**Wi-Fi regulatory country code**~~ **Resolved** — `IE` (`wifi_country`).
 4. ~~**Camera VLAN**~~ **Resolved 2026-07-08** — kept; Frigate on orin-nano
    (infra) pulls RTSP via the infra→cameras allow. Wired cams on lan3,
