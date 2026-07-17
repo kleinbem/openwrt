@@ -106,9 +106,15 @@ The switch/radio config is hardware-specific; these must be pinned first
 1. **Port → zone map:** which physical ports (lan1/lan2/lan3, sfp1/sfp2) are
    untagged in which VLAN, and which port is the management/infra uplink. Is the
    AP (router-b, upstairs) fed by a tagged trunk?
-2. **SSID → VLAN map + names:** e.g. `Home`→trusted, `Home-IoT`→iot,
-   `Home-Guest`→guest. Which bands (2.4/5/6 GHz EHT) per SSID?
-3. **Wi-Fi regulatory country code** (e.g. `IE`/`DE`) — required for 6 GHz.
+2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`
+   (spec locked 2026-07): main SSID keeps its current name+password
+   (trusted, all bands), `<ssid>-IoT`→iot (2.4), `<ssid>-Cam`→cameras (2.4),
+   `<ssid>-Guest`→guest (2.4+5, isolated). WPA3 `sae-mixed` (pure SAE on
+   6 GHz), 802.11r + DAWN. Map lives in
+   `openwrt-config/ansible/group_vars/all.yml` (`wifi_networks`); SSID base +
+   passphrases in openwrt-secrets. Until the network role lands the SSIDs
+   attach to flat `lan` (`vlan_segmentation_live: false`).
+3. ~~**Wi-Fi regulatory country code**~~ **Resolved** — `IE` (`wifi_country`).
 4. **Camera VLAN:** keep it? If so, which host runs the NVR (the one exception
    cameras may reach)? Drop VLAN 30 if there are no cameras yet.
 5. **WAN uplink:** confirm it's `eth1` (current `uci-defaults`) vs an SFP port.
