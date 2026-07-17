@@ -30,12 +30,12 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 | IP        | Host          | Role                                   |
 |-----------|---------------|----------------------------------------|
 | 10.0.0.1  | core-gateway  | BPI-R4 main gateway (downstairs)       |
-| 10.0.0.2  | mesh-node     | BPI-R4 AP / LXC host (upstairs)        |
+| 10.0.0.2  | ap-upstairs   | BPI-R4 AP / LXC host (upstairs)        |
 | 10.0.0.3  | router-1      | NixOS LXC brain                        |
 | 10.0.0.4  | router-2      | NixOS LXC brain                        |
 | 10.0.0.5  | nixos-nvme    | workstation + Tang (LUKS unlock anchor)|
-| 10.0.0.6  | mesh-node-2   | 2nd BPI-R4 (not yet active)            |
-| 10.0.0.7  | net-brain     | NixOS LXC on Router B (was `.5`¹)      |
+| 10.0.0.6  | *(free)*      | reserved for the next `ap-<location>`  |
+| 10.0.0.7  | net-brain     | NixOS LXC on ap-upstairs (was `.5`¹)   |
 | 10.0.0.12 | orin-nano     | AI edge + Tang                         |
 | 10.0.0.21 | hass-pi       | Home Assistant + AdGuard + Tang        |
 | 10.0.0.22 | core-pi       | cache entrypoint + Tang                |
@@ -84,7 +84,7 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
 1. **Bench:** BPI-R4 on an isolated bench, laptop direct-connected to a LAN
    port. Firmware first-boot default stays `192.168.1.1/24` (bench-only address
    — laptop sits on `192.168.1.x`).
-2. **Provision:** `just provision` (or `just config::configure router-a`). The
+2. **Provision:** `just provision` (or `just config::configure core-gateway`). The
    network role builds the VLANs, firewall zones, per-VLAN DHCP, and Wi-Fi from
    the vars in `openwrt-config/ansible/group_vars/all.yml`. Applying it moves the
    router's management IP to `10.0.0.1` and drops the bench SSH session

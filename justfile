@@ -39,7 +39,7 @@ ship *args="":
     @just jj::ship {{args}}
 
 # Pass-through to any sub-repo's justfile from the meta root.
-# Usage: just in openwrt-config check router-a
+# Usage: just in openwrt-config check core-gateway
 [group("Main")]
 in repo *args:
     @cd {{repo}} && just {{args}}
