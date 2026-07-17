@@ -98,14 +98,18 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
 5. **Post-swap:** point the inventory at `10.0.0.1` (it lists the bench address
    until now — see `../nix/nix-config/inventory.nix`, the generator source).
 
-## Open items — confirm before the VLAN/switch config can be authored
+## Open items — status
 
-The switch/radio config is hardware-specific; these must be pinned first
-(BPI-R4 DSA port names + Wi-Fi 7 radios differ from the old swconfig world):
+All six pinned; the VLAN/switch config is authored as `roles/network`
+(gated on `vlan_segmentation_live` in group_vars). One bench verification
+remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
+(`ls /sys/class/net`) match `port_maps` in group_vars.
 
-1. **Port → zone map:** which physical ports (lan1/lan2/lan3, sfp1/sfp2) are
-   untagged in which VLAN, and which port is the management/infra uplink. Is the
-   AP (router-b, upstairs) fed by a tagged trunk?
+1. ~~**Port → zone map**~~ **Resolved 2026-07-17** — gateway + AP identical:
+   lan1 = infra untagged (fleet/management), lan2 = trusted untagged,
+   lan3 = cameras untagged (wired cams); SFP+ (`sfp2`) = tagged trunk
+   carrying all VLANs between the two BPI-R4s. Map lives in
+   `openwrt-config/ansible/group_vars/all.yml` (`port_maps`).
 2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`
    (spec locked 2026-07): main SSID keeps its current name+password
    (trusted, all bands), `<ssid>-IoT`→iot (2.4+5), `<ssid>-Cam`→cameras
@@ -115,8 +119,11 @@ The switch/radio config is hardware-specific; these must be pinned first
    passphrases in openwrt-secrets. Until the network role lands the SSIDs
    attach to flat `lan` (`vlan_segmentation_live: false`).
 3. ~~**Wi-Fi regulatory country code**~~ **Resolved** — `IE` (`wifi_country`).
-4. **Camera VLAN:** keep it? If so, which host runs the NVR (the one exception
-   cameras may reach)? Drop VLAN 30 if there are no cameras yet.
-5. **WAN uplink:** confirm it's `eth1` (current `uci-defaults`) vs an SFP port.
-6. **Preserve list:** any static leases / port-forwards on the current router
-   beyond the fleet that must carry over.
+4. ~~**Camera VLAN**~~ **Resolved 2026-07-08** — kept; Frigate on orin-nano
+   (infra) pulls RTSP via the infra→cameras allow. Wired cams on lan3,
+   Wi-Fi cams on the `-Cam` SSID.
+5. ~~**WAN uplink**~~ **Resolved 2026-07-17** — `eth1` (matches
+   `uci-defaults` + inventory `wan_iface`); not an SFP port.
+6. ~~**Preserve list**~~ **Resolved 2026-07-17** — nothing beyond the fleet's
+   static leases (already in openwrt-secrets ansible-vars); no port-forwards
+   or custom DNS entries carry over.
