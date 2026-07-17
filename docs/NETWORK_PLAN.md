@@ -108,8 +108,8 @@ The switch/radio config is hardware-specific; these must be pinned first
    AP (router-b, upstairs) fed by a tagged trunk?
 2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`
    (spec locked 2026-07): main SSID keeps its current name+password
-   (trusted, all bands), `<ssid>-IoT`→iot (2.4), `<ssid>-Cam`→cameras (2.4),
-   `<ssid>-Guest`→guest (2.4+5, isolated). WPA3 `sae-mixed` (pure SAE on
+   (trusted, all bands), `<ssid>-IoT`→iot (2.4+5), `<ssid>-Cam`→cameras
+   (2.4+5), `<ssid>-Guest`→guest (2.4+5, isolated). WPA3 `sae-mixed` (pure SAE on
    6 GHz), 802.11r + DAWN. Map lives in
    `openwrt-config/ansible/group_vars/all.yml` (`wifi_networks`); SSID base +
    passphrases in openwrt-secrets. Until the network role lands the SSIDs
