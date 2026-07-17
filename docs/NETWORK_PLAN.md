@@ -30,20 +30,16 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 | IP        | Host          | Role                                   |
 |-----------|---------------|----------------------------------------|
 | 10.0.0.1  | core-gateway  | BPI-R4 main gateway (downstairs)       |
-| 10.0.0.2  | ap-upstairs   | BPI-R4 AP / LXC host (upstairs)        |
-| 10.0.0.3  | router-1      | NixOS LXC brain                        |
-| 10.0.0.4  | router-2      | NixOS LXC brain                        |
-| 10.0.0.5  | nixos-nvme    | workstation + Tang (LUKS unlock anchor)|
-| 10.0.0.6  | *(free)*      | reserved for the next `ap-<location>`  |
-| 10.0.0.7  | net-brain     | NixOS LXC on ap-upstairs (was `.5`¹)   |
+| 10.0.0.2  | ap-upstairs   | BPI-R4 AP / LXC-capable (upstairs)     |
+| 10.0.0.5  | nixos-nvme    | workstation + Tang (LUKS unlock anchor¹)|
+| 10.0.0.3–.4, .6–.9 | *(free)* | network-layer range — next `ap-<location>` etc. (LXC "brain" containers dropped 2026-07-18: never deployed, tenants live on the fleet; ap-upstairs keeps the capability) |
 | 10.0.0.12 | orin-nano     | AI edge + Tang                         |
 | 10.0.0.21 | hass-pi       | Home Assistant + AdGuard + Tang        |
 | 10.0.0.22 | core-pi       | cache entrypoint + Tang                |
 | 10.0.0.30 | nasbook       | NAS + Tang                             |
 
-¹ net-brain moved off `.5` — that octet is nixos-nvme/Tang, which can't move
-  (the clevis LUKS binding is anchored there). Source of truth:
-  `../nix/nix-config/inventory.nix`.
+¹ `.5` can't move — the clevis LUKS binding is anchored to nixos-nvme/Tang
+  there. Source of truth: `../nix/nix-config/inventory.nix`.
 
 > Bench bootstrap: the BPI-R4 firmware still first-boots at `192.168.1.1` (the
 > ImageBuilder default). For the one-time bench provisioning, reach it there
@@ -62,6 +58,10 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 
 ¹ **DNS exception:** allow UDP/TCP 53 (+853) from iot/cameras/guest to AdGuard
   `10.0.0.21` only — so every VLAN resolves via AdGuard without opening infra.
+  **Fallback (2026-07-18):** option 6 also hands out the VLAN's own gateway IP
+  as secondary resolver — the gateway's dnsmasq (unfiltered, WAN upstreams)
+  keeps the LAN resolving when hass-pi is down. Within-zone, so only an input
+  allow on :53 per restricted zone; no cross-zone opening.
 ² cameras get **no WAN** (no phone-home); a trusted host or NVR pulls streams.
 
 **LUKS constraint (do not break):** headless hosts unlock via clevis SSS with
