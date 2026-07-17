@@ -56,13 +56,26 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 | cameras   | DNS¹  |   ✗     |  ✗  |   —     |  ✗    |  ✗² |
 | guest     | DNS¹  |   ✗     |  ✗  |   ✗     |  —    |  ✓  |
 
-¹ **DNS exception:** allow UDP/TCP 53 (+853) from iot/cameras/guest to AdGuard
-  `10.0.0.21` only — so every VLAN resolves via AdGuard without opening infra.
-  **Fallback (2026-07-18):** option 6 also hands out the VLAN's own gateway IP
-  as secondary resolver — the gateway's dnsmasq (unfiltered, WAN upstreams)
-  keeps the LAN resolving when hass-pi is down. Within-zone, so only an input
-  allow on :53 per restricted zone; no cross-zone opening.
+¹ **DNS, two policies by trust (2026-07-18):**
+  • **infra/trusted** (your devices): DHCP option 6 = AdGuard primary + the
+    VLAN's own gateway IP as *unfiltered* fallback, so the LAN keeps resolving
+    if hass-pi is down. No hijack.
+  • **iot/cameras/guest** (untrusted): AdGuard only, and a **DNS hijack**
+    (DNAT of every :53 → AdGuard) so hardcoded-resolver gear can't bypass
+    filtering. The DNAT rides the existing allow to AdGuard `10.0.0.21`.
+    Trade-off: AdGuard down = degraded DNS for these zones (accepted).
 ² cameras get **no WAN** (no phone-home); a trusted host or NVR pulls streams.
+
+**Native router services (all OpenWrt-native, 2026-07-18):**
+- **NTP server** on the gateway (`sysntpd enable_server`) — cameras have no
+  WAN, so the router is their clock; restricted zones get an input allow on
+  udp/123. IoT TLS also depends on correct time.
+- **mDNS reflector** (avahi, gateway) — bridges service discovery
+  **trusted↔iot only** (phones find Chromecast/HomeKit/printers across the
+  VLAN edge); guest/cameras excluded. iot gets an input allow on udp/5353.
+- **Management plane = infra only** — SSH/HTTP/HTTPS rejected from trusted
+  (which keeps DNS/DHCP/NTP); iot/cameras/guest already blocked by zone
+  policy. Admin from infra, where the workstation lives.
 
 **LUKS constraint (do not break):** headless hosts unlock via clevis SSS with
 threshold **t=1** across a **Tang mesh** — every capable fleet host runs Tang
