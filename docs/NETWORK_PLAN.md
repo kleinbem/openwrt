@@ -18,7 +18,7 @@ stays in the **infra** VLAN so headless LUKS unlock keeps working within-zone.
 | 20   | 10.0.20.0/24   | iot      | smart-home gear — internet + DNS only     |
 | 30   | 10.0.30.0/24   | cameras  | cameras/NVR — no internet                 |
 | 40   | 10.0.40.0/24   | guest    | guest devices — internet only             |
-| 50   | 10.0.50.0/24   | work     | WFH corporate laptop — internet only, isolated from the home LAN, **DNS not hijacked** (corporate VPN uses its own DNS). Wi-Fi only (SSID `16CVG-Work`). |
+| 50   | 10.0.50.0/24   | work     | WFH corporate laptop — internet only, isolated from the home LAN, **DNS not hijacked** (corporate VPN uses its own DNS). Reached via the MPSK SSID `16CVG-W3` with the work password. |
 
 Room to grow: each is a `/24` (254 hosts) carved from `10.0.0.0/8`; bump any to
 a `/16` (e.g. `10.20.0.0/16` for IoT) later without renumbering the others.
@@ -142,9 +142,9 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
    lands in the right VLAN. Encryption strength matched to VLAN sensitivity:
    - `16CVG` → trusted (legacy/stable — existing devices, WPA3 single-PSK;
      the reliable WPA3 path for trusted, retire once migrated)
-   - `16CVG-MPSK-W3` → **MPSK, WPA3/sae-mixed.** Sensitive + modern: password
+   - `16CVG-W3` → **MPSK, WPA3/sae-mixed.** Sensitive + modern: password
      picks trusted / work / iot / cameras. All bands.
-   - `16CVG-MPSK-W2` → **MPSK, WPA2/psk2.** Compatibility tier for cheap gear
+   - `16CVG-W2` → **MPSK, WPA2/psk2.** Compatibility tier for cheap gear
      that chokes on WPA3 beacons. Carries **only low-trust VLANs (iot,
      cameras)** — never trusted/work, so its crackable WPA2 only ever exposes
      isolated VLANs. 2.4+5 GHz (no 6 GHz — that's WPA3-only).
