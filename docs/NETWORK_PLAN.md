@@ -140,8 +140,10 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
    Because the PASSWORD picks the VLAN (not the SSID), the two MPSK SSIDs are
    just encryption tiers; a device joins whichever its radio likes and still
    lands in the right VLAN. Encryption strength matched to VLAN sensitivity:
-   - `16CVG` → trusted (legacy/stable — existing devices, WPA3 single-PSK;
-     the reliable WPA3 path for trusted, retire once migrated)
+   - `16CVG` → trusted (legacy/stable — **exact copy of the old router:
+     WPA2-Personal, 2.4+5 GHz, no 802.11r**, so paired devices reconnect with
+     no prompt at the swap. Retire once devices are migrated to `-W3`, after
+     which trusted is WPA3-only)
    - `16CVG-W3` → **MPSK, WPA3/sae-mixed.** Sensitive + modern: password
      picks trusted / work / iot / cameras. All bands.
    - `16CVG-W2` → **MPSK, WPA2/psk2.** Compatibility tier for cheap gear
