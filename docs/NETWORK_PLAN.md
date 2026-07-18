@@ -18,6 +18,7 @@ stays in the **infra** VLAN so headless LUKS unlock keeps working within-zone.
 | 20   | 10.0.20.0/24   | iot      | smart-home gear — internet + DNS only     |
 | 30   | 10.0.30.0/24   | cameras  | cameras/NVR — no internet                 |
 | 40   | 10.0.40.0/24   | guest    | guest devices — internet only             |
+| 50   | 10.0.50.0/24   | work     | WFH corporate laptop — internet only, isolated from the home LAN, **DNS not hijacked** (corporate VPN uses its own DNS). Wi-Fi only (SSID `16CVG-Work`). |
 
 Room to grow: each is a `/24` (254 hosts) carved from `10.0.0.0/8`; bump any to
 a `/16` (e.g. `10.20.0.0/16` for IoT) later without renumbering the others.
@@ -48,22 +49,27 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 
 ## Firewall zone matrix
 
-| From → To | infra | trusted | iot | cameras | guest | wan |
-|-----------|:-----:|:-------:|:---:|:-------:|:-----:|:---:|
-| infra     |  —    |   ✓     |  ✓  |   ✓     |  ✗    |  ✓  |
-| trusted   |  ✓    |   —     |  ✓  |   ✓     |  ✗    |  ✓  |
-| iot       | DNS¹  |   ✗     |  —  |   ✗     |  ✗    |  ✓  |
-| cameras   | DNS¹  |   ✗     |  ✗  |   —     |  ✗    |  ✗² |
-| guest     | DNS¹  |   ✗     |  ✗  |   ✗     |  —    |  ✓  |
+| From → To | infra | trusted | iot | cameras | guest | work | wan |
+|-----------|:-----:|:-------:|:---:|:-------:|:-----:|:----:|:---:|
+| infra     |  —    |   ✓     |  ✓  |   ✓     |  ✗    |  ✗   |  ✓  |
+| trusted   |  ✓    |   —     |  ✓  |   ✓     |  ✗    |  ✗   |  ✓  |
+| iot       | DNS¹  |   ✗     |  —  |   ✗     |  ✗    |  ✗   |  ✓  |
+| cameras   | DNS¹  |   ✗     |  ✗  |   —     |  ✗    |  ✗   |  ✗² |
+| guest     | DNS¹  |   ✗     |  ✗  |   ✗     |  —    |  ✗   |  ✓  |
+| work      |  ✗    |   ✗     |  ✗  |   ✗     |  ✗    |  —   |  ✓  |
 
-¹ **DNS, two policies by trust (2026-07-18):**
-  • **infra/trusted** (your devices): DHCP option 6 = AdGuard primary + the
-    VLAN's own gateway IP as *unfiltered* fallback, so the LAN keeps resolving
-    if hass-pi is down. No hijack.
-  • **iot/cameras/guest** (untrusted): AdGuard only, and a **DNS hijack**
-    (DNAT of every :53 → AdGuard) so hardcoded-resolver gear can't bypass
-    filtering. The DNAT rides the existing allow to AdGuard `10.0.0.21`.
-    Trade-off: AdGuard down = degraded DNS for these zones (accepted).
+The `dns` attribute on each VLAN (group_vars) drives DNS + input policy in
+three tiers — the network role derives everything from it:
+
+¹ **trusted tier** (infra, trusted — your devices): DHCP option 6 = AdGuard
+  primary + the VLAN's own gateway IP as *unfiltered* fallback, so the LAN
+  keeps resolving if hass-pi is down. Zone input ACCEPT. No hijack.
+- **filtered tier** (iot, cameras, guest — untrusted): AdGuard only + a **DNS
+  hijack** (DNAT every :53 → AdGuard `10.0.0.21`) so hardcoded-resolver gear
+  can't bypass filtering. Trade-off: AdGuard down = degraded DNS (accepted).
+- **local tier** (work — WFH corporate laptop): the router's own *unfiltered*
+  dnsmasq only, **no hijack**, so her employer's VPN/DNS is respected. Fully
+  isolated from the home LAN (internet only); reaches nothing in infra.
 ² cameras get **no WAN** (no phone-home); a trusted host or NVR pulls streams.
 
 **Native router services (all OpenWrt-native, 2026-07-18):**
@@ -132,7 +138,8 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
 2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`
    (spec locked 2026-07): main SSID keeps its current name+password
    (trusted, all bands), `<ssid>-IoT`→iot (2.4+5), `<ssid>-Cam`→cameras
-   (2.4+5), `<ssid>-Guest`→guest (2.4+5, isolated). WPA3 `sae-mixed` (pure SAE on
+   (2.4+5), `<ssid>-Guest`→guest (2.4+5, isolated), `<ssid>-Work`→work
+   (2.4+5, WFH laptop). WPA3 `sae-mixed` (pure SAE on
    6 GHz), 802.11r + DAWN. Map lives in
    `openwrt-config/ansible/group_vars/all.yml` (`wifi_networks`); SSID base +
    passphrases in openwrt-secrets. `roles/network` is live
