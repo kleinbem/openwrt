@@ -136,27 +136,29 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
    carrying all VLANs between the two BPI-R4s. Map lives in
    `openwrt-config/ansible/group_vars/all.yml` (`port_maps`).
 2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`.
-   Migration-safe layout (2026-07-18), **3 SSIDs**:
-   - `16CVG` → trusted (legacy/stable — existing devices, normal WPA3-PSK;
-     retire once everything's migrated)
-   - `16CVG-MPSK` → **MPSK**, the network everything-but-guests moves onto one
-     device at a time. Password picks the VLAN: trusted pw → trusted,
-     `wifi_pass_iot` → iot, `wifi_pass_cameras` → cameras, `wifi_pass_work` →
-     work. IoT/camera devices don't exist yet, so they're born here — no
-     dedicated `-IoT`/`-Cam` SSIDs. Same trusted password as 16CVG so moving a
-     trusted device = forget/rejoin.
-   - `16CVG-Guest` → guest (plain SSID on purpose — easy to hand a visitor;
-     client-isolated)
-   All WPA3 `sae-mixed` (pure SAE on 6 GHz), DAWN steering; 802.11r on the
-   discrete SSIDs (off on MPSK until proven). Map lives in
-   `openwrt-config/ansible/group_vars/all.yml` (`wifi_networks`); passphrases
-   in openwrt-secrets. `roles/network` live (`vlan_segmentation_live: true`).
-   **End state:** once devices are on `16CVG-MPSK` and it's proven, drop
-   `16CVG` and rename MPSK → `16CVG` (2 SSIDs: MPSK + guest).
-   ⚠️ **Bench-validate the MPSK SSID:** (a) 25.12 ucode `wpa_psk_file`
-   dynamic-VLAN regression (#20355); (b) some cheap WPA2-only IoT chokes on
-   `sae-mixed` beacons. `16CVG` is the safety net; fallback for a stubborn
-   IoT/cam device is a small dedicated SSID (git history has the blocks).
+   Migration-safe layout (2026-07-18), **4 SSIDs** (→ 3 after `16CVG` retires).
+   Because the PASSWORD picks the VLAN (not the SSID), the two MPSK SSIDs are
+   just encryption tiers; a device joins whichever its radio likes and still
+   lands in the right VLAN. Encryption strength matched to VLAN sensitivity:
+   - `16CVG` → trusted (legacy/stable — existing devices, WPA3 single-PSK;
+     the reliable WPA3 path for trusted, retire once migrated)
+   - `16CVG-MPSK-W3` → **MPSK, WPA3/sae-mixed.** Sensitive + modern: password
+     picks trusted / work / iot / cameras. All bands.
+   - `16CVG-MPSK-W2` → **MPSK, WPA2/psk2.** Compatibility tier for cheap gear
+     that chokes on WPA3 beacons. Carries **only low-trust VLANs (iot,
+     cameras)** — never trusted/work, so its crackable WPA2 only ever exposes
+     isolated VLANs. 2.4+5 GHz (no 6 GHz — that's WPA3-only).
+   - `16CVG-Guest` → guest (plain, easy to hand a visitor; client-isolated)
+   IoT/camera devices don't exist yet, so they're born on MPSK (no dedicated
+   `-IoT`/`-Cam` SSIDs); onboard one at a time. DAWN steering; 802.11r on the
+   discrete SSIDs (off on MPSK until proven). Map in `group_vars` (`wifi_networks`),
+   passphrases in openwrt-secrets. `roles/network` live.
+   **End state:** migrate onto `-W3`/`-W2`, then drop `16CVG` (3 SSIDs).
+   ⚠️ **Bench-validate:** (a) 25.12 ucode `wpa_psk_file` dynamic-VLAN
+   regression (#20355); (b) whether WPA3-SAE clients on `-W3` actually get a
+   VLAN — `wpa_psk_file` is the WPA2 mechanism, so SAE clients may need
+   `sae_password`+`vlanid` (else those devices ride `16CVG`/`-W2`). `16CVG` is
+   the reliable WPA3 fallback for trusted throughout.
 3. ~~**Wi-Fi regulatory country code**~~ **Resolved** — `IE` (`wifi_country`).
 4. ~~**Camera VLAN**~~ **Resolved 2026-07-08** — kept; Frigate on orin-nano
    (infra) pulls RTSP via the infra→cameras allow. Wired cams on lan3,
