@@ -135,15 +135,26 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
    lan3 = cameras untagged (wired cams); SFP+ (`sfp2`) = tagged trunk
    carrying all VLANs between the two BPI-R4s. Map lives in
    `openwrt-config/ansible/group_vars/all.yml` (`port_maps`).
-2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`
-   (spec locked 2026-07): main SSID keeps its current name+password
-   (trusted, all bands), `<ssid>-IoT`→iot (2.4+5), `<ssid>-Cam`→cameras
-   (2.4+5), `<ssid>-Guest`→guest (2.4+5, isolated), `<ssid>-Work`→work
-   (2.4+5, WFH laptop). WPA3 `sae-mixed` (pure SAE on
-   6 GHz), 802.11r + DAWN. Map lives in
+2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`.
+   Migration-safe layout (2026-07-18), 5 SSIDs:
+   - `16CVG` → trusted (legacy/stable — existing devices, normal WPA3-PSK;
+     retire once migrated)
+   - `16CVG-Plus` → **MPSK** migration target: password picks the VLAN
+     (trusted pw → trusted, `wifi_pass_work` → work). Same trusted password
+     as 16CVG so moving a device = forget/rejoin. ⚠️ needs bench validation
+     (25.12 ucode `wpa_psk_file` regression #20355) — 16CVG is the safety net.
+   - `16CVG-IoT` → iot, `16CVG-Cam` → cameras (dedicated, 2.4+5)
+   - `16CVG-Guest` → guest (plain SSID on purpose — easy to hand a visitor;
+     client-isolated)
+   All WPA3 `sae-mixed` (pure SAE on 6 GHz), DAWN steering; 802.11r on the
+   discrete SSIDs (off on MPSK until proven). Map lives in
    `openwrt-config/ansible/group_vars/all.yml` (`wifi_networks`); SSID base +
-   passphrases in openwrt-secrets. `roles/network` is live
-   (`vlan_segmentation_live: true`) — SSIDs attach to their VLANs.
+   passphrases in openwrt-secrets. `roles/network` live
+   (`vlan_segmentation_live: true`). **End state:** once devices are on
+   `16CVG-Plus` and MPSK is proven, drop `16CVG` and rename Plus → `16CVG`
+   (2.4 GHz beacons then 4 → 3). **MPSK fallback:** if the regression bites,
+   the discrete `16CVG` keeps everyone online; work can get its own plain SSID
+   from git history.
 3. ~~**Wi-Fi regulatory country code**~~ **Resolved** — `IE` (`wifi_country`).
 4. ~~**Camera VLAN**~~ **Resolved 2026-07-08** — kept; Frigate on orin-nano
    (infra) pulls RTSP via the infra→cameras allow. Wired cams on lan3,
