@@ -62,3 +62,50 @@ banIP/CrowdSec ─────────────────────�
 - Log sink: Loki (fits Grafana) vs. plain rsyslog files on an SSD.
 - How autonomous: digest-only (safe) → alert → auto-act (quarantine/block).
 - Privacy line: which logs may go to cloud AI vs. Orin-only.
+
+---
+
+# Control layer (2026-07-19)
+
+Monitoring is only half of it — you also need to *act*. Two levers (see the
+"dynamic per-device control" discussion):
+- **Membership (L2, where a device lives)** — set by MPSK password; changing it
+  needs a reconnect. Static classification, rarely touched.
+- **Policy (L3, what a device may do)** — firewall/DNS, keyed on MAC/IP, applied
+  to the live connection instantly. **This is where control lives.**
+
+## Built now
+- **Device quarantine** — `just quarantine MAC [name]` / `just release MAC` /
+  `just quarantine-list` (openwrt-config). A gateway firewall DROP on the MAC,
+  live, no VLAN move. The first real control primitive.
+- **Per-service control surfaces** — LuCI (Material) with an app per service
+  (banIP, DAWN, nlbwmon, SQM), the network hub landing page, and AdGuard's own
+  UI (now local on the gateway) for per-client DNS policy.
+
+## Roadmap (each a small, self-contained add)
+- **Time-based policy** — nftables time-match / cron-toggled rules (bedtime,
+  IoT curfew, guest-hours). Parental controls via AdGuard per-client + firewall.
+- **Bandwidth caps** — per-VLAN/per-device via cake (SQM) or tc.
+- **Closed loop** — monitoring detects (CrowdSec/banIP/anomaly) → control acts
+  (quarantine/block). Human-in-loop first, then optionally automated via n8n.
+
+## The full monitoring+control loop (the target)
+```
+  SEE                         DECIDE                    ACT
+  ───                         ──────                    ───
+  Prometheus (metrics) ─┐
+  Loki (logs, via        ├─▶ Grafana dashboards ─┐
+     remote-syslog)      │   Alertmanager rules  ├─▶ ntfy alert (human)
+  banIP / CrowdSec ──────┘   AI digest (Orin/     │   just quarantine / block
+  nlbwmon (per-device)       Claude/Gemini)       └─▶ n8n automation (auto)
+```
+Most of SEE emits already (router side done). DECIDE + ACT is where the next
+value is: **Grafana "network" dashboard**, **router alert rules** (WAN down,
+SoC temp, conntrack pressure, banIP spikes), and wiring **remote-syslog → Loki**
+(needs a syslog receiver in front of Loki). These land on the fleet (nix-config,
+deploys live) — additive and low-risk, but your call to build.
+
+## Decisions needed (to build the fleet side)
+- Grafana dashboard + alert rules: build now (additive) or review first?
+- Log sink: promtail-with-syslog-receiver → Loki, vs rsyslog on an SSD.
+- Automation autonomy: alert-only → one-click quarantine → AI auto-act.
