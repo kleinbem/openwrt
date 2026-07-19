@@ -7,10 +7,16 @@ This document serves as the ground truth for the OpenWrt router configuration.
 - **Architecture**: aarch64_cortex-a53
 - **CPU**: MediaTek MT7988A
 - **RAM**: 4GB DDR4 — **run at 2 GiB** (`mem=2048M` in U-Boot): MT7988 hardware flow-offloading drops packets when the full 4 GiB is addressed (upstream-unresolved). See docs/NETWORK_PLAN.md.
-- **Storage** (decided 2026-07-17: OS boots from **eMMC**; SD = installer/rescue only):
-    - core-gateway: 8GB eMMC (OS)
-    - ap-upstairs: 8GB eMMC (OS) + **NVMe (Crucial P3 1TB)** for LXC storage
+- **Storage** (OS boots from **eMMC**; SD = installer/rescue; **both routers
+  get an NVMe SSD**, 2026-07-19 — `kmod-nvme` is in the image):
+    - core-gateway: 8GB eMMC (OS) + **NVMe** for *storage* — persistent local
+      logs, banIP data, swap. Kept to storage (not heavy LXC): it's the
+      routing box and runs at 2 GiB, so compute stays light.
+    - ap-upstairs: 8GB eMMC (OS) + **NVMe** for *compute* — LXC storage
+      (`/srv/lxc`) + data. The compute-capable router.
     - SPI-NAND (128MB): bootloader + recovery fallback (written during install chain)
+    - ⚠️ SSDs are mounted at the bench (format is a **manual** step — the role
+      never auto-formats a disk); smartmontools watches health once mounted.
 - **Interfaces**:
     - WAN: eth1 (SFP/2.5G)
     - LAN: eth0 (Switch/2.5G)
