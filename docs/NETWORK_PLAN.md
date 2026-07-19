@@ -83,6 +83,24 @@ three tiers — the network role derives everything from it:
   (which keeps DNS/DHCP/NTP); iot/cameras/guest already blocked by zone
   policy. Admin from infra, where the workstation lives.
 
+**Hardening & tuning (2026-07-19):**
+- **QoS/SQM** (`roles/qos`) — cake bufferbloat control on the WAN; set
+  `wan_down_mbit`/`wan_up_mbit` to your measured line speed to enable.
+- **banIP** (`roles/banip`) — threat-feed IP blocking at the WAN edge (modest
+  RAM-conscious feed set for the 2 GiB boards).
+- **Firewall defaults** — drop-invalid + SYN-flood protection. Flow-offloading
+  deliberately OFF: it bypasses the qdisc and would defeat SQM (latency for
+  WFH calls beats raw throughput at home WAN speeds; HW offload also needs
+  `mem=2048M`). Flip both if a future fast WAN needs it and you drop SQM.
+- **IGMP/MLD snooping** on `br-lan` — multicast only to subscribers (cast/
+  AirPlay/mDNS), not flooded.
+- **802.11k/v** on every SSID — neighbor reports + BSS transition, so clients
+  roam smartly between the two APs (with 802.11r + DAWN).
+- **dnsmasq** — DNS-rebinding protection (split-horizon `kleinbem.dev`
+  whitelisted), bigger cache, domainneeded/boguspriv.
+- **Remote syslog** (`roles/common`) — set `remote_syslog_ip` to ship logs to
+  a fleet collector; empty = local-only.
+
 **LUKS constraint (do not break):** headless hosts unlock via clevis SSS with
 threshold **t=1** across a **Tang mesh** — every capable fleet host runs Tang
 (nixos-nvme `.5`, orin `.12`, core-pi `.22`, hass-pi `.21`, nasbook, …), and
