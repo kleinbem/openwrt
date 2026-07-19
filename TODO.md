@@ -12,6 +12,7 @@
 - [x] QoS/SQM (cake, WAN bufferbloat) + banIP (edge threat-feed blocking) roles (2026-07-19)
 - [x] Hardening/tuning — firewall (drop-invalid/synflood), IGMP snooping, 802.11k/v roaming, dnsmasq rebind-protection, remote syslog (2026-07-19)
 - [x] UI — Material theme + per-service LuCI apps + network hub landing page; monitoring collectors (2026-07-19)
+- [x] Native services — AdGuard Home (adguard_local DNS rework, moved off hass-pi), self-contained CrowdSec IPS, optional WireGuard break-glass (2026-07-19)
 - [ ] Observability + AI-assisted analysis — see docs/OBSERVABILITY_AI.md (design; needs your decisions)
 - [ ] Both routers: mount NVMe at bench (format is manual) — gateway=logs/data, ap=LXC
 - [ ] Create `kleinbem/openwrt` on GitHub via github-config (terraform) and push the meta repo
