@@ -10,6 +10,10 @@
 - [x] Native router services — NTP server, mDNS reflector, DNS hijack, mgmt-plane lockdown, split-trust DNS fallback (2026-07-18)
 - [x] MPSK Wi-Fi (password→VLAN, W3/W2 tiers) + migration-safe 16CVG (WPA2 old-router copy) + work VLAN (2026-07-18)
 - [x] QoS/SQM (cake, WAN bufferbloat) + banIP (edge threat-feed blocking) roles (2026-07-19)
+- [x] Hardening/tuning — firewall (drop-invalid/synflood), IGMP snooping, 802.11k/v roaming, dnsmasq rebind-protection, remote syslog (2026-07-19)
+- [x] UI — Argon theme + per-service LuCI apps + network hub landing page; monitoring collectors (2026-07-19)
+- [ ] Observability + AI-assisted analysis — see docs/OBSERVABILITY_AI.md (design; needs your decisions)
+- [ ] Both routers: mount NVMe at bench (format is manual) — gateway=logs/data, ap=LXC
 - [ ] Create `kleinbem/openwrt` on GitHub via github-config (terraform) and push the meta repo
 - [ ] Flash + provision the BPI-R4 pair (see docs/SYSTEM_REFERENCE.md network map)
 
