@@ -8,8 +8,20 @@
 - [x] Wi-Fi radio role — WPA3 SSID-per-VLAN, 802.11r + DAWN (2026-07-17)
 - [x] Network/VLAN role — bridge-vlans, per-VLAN DHCP, firewall matrix (2026-07-17)
 - [x] Native router services — NTP server, mDNS reflector, DNS hijack, mgmt-plane lockdown, split-trust DNS fallback (2026-07-18)
+- [x] MPSK Wi-Fi (password→VLAN, W3/W2 tiers) + migration-safe 16CVG (WPA2 old-router copy) + work VLAN (2026-07-18)
+- [x] QoS/SQM (cake, WAN bufferbloat) + banIP (edge threat-feed blocking) roles (2026-07-19)
 - [ ] Create `kleinbem/openwrt` on GitHub via github-config (terraform) and push the meta repo
 - [ ] Flash + provision the BPI-R4 pair (see docs/SYSTEM_REFERENCE.md network map)
+
+Deferred (need a design decision or runtime prereq, see docs / session notes):
+- **CrowdSec firewall bouncer** — would enforce the fleet's CrowdSec decisions
+  at the router edge, but the LAPI (`10.85.48.119`, container bridge) isn't
+  reachable from the gateway's LAN as-is; needs a published/NetBird endpoint
+  first. banIP covers the self-contained edge-blocking case meanwhile.
+- **SQM line speeds** — `wan_down_mbit`/`wan_up_mbit` are 0 (SQM no-op) until
+  set to a measured speedtest at the bench.
+- **MPSK WPA3-SAE VLANs** — `wpa_psk_file` is WPA2-side; true SAE per-VLAN
+  routing may need `sae_password`+`vlanid` in roles/wifi (bench-decide).
 
 Dropped: ~~WireGuard VPN via Ansible~~ — NetBird already covers fleet remote
 access; a second VPN plane on the router is complexity without a user. Native
