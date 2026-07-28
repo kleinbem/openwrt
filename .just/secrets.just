@@ -6,4 +6,4 @@ set working-directory := ".."
 [no-cd]
 edit file:
     @echo "🔐 Editing secret file: {{file}}..."
-    cd openwrt-secrets && sops {{file}}
+    cd {{ROOT}}/openwrt-secrets && sops {{file}}

@@ -12,12 +12,13 @@ check-all: lint-all
     #!/usr/bin/env bash
     set -e
     echo "🎭 Ansible playbook syntax..."
-    (cd openwrt-config && ansible-playbook -i ansible/inventory.ini ansible/site.yml --syntax-check)
+    (cd {{ROOT}}/openwrt-config && ansible-playbook -i ansible/inventory.ini ansible/site.yml --syntax-check)
     echo "📜 Justfile parse (meta + sub-repos)..."
     just --list >/dev/null
-    for repo in {{REPOS}}; do
-        if [ -f "$repo/Justfile" ] || [ -f "$repo/justfile" ]; then
-            (cd "$repo" && just --list >/dev/null) && echo "  ✓ $repo"
+    for repo in {{REPOS}} .; do
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+        if [ -f "$rpath/Justfile" ] || [ -f "$rpath/justfile" ]; then
+            (cd "$rpath" && just --list >/dev/null) && echo "  ✓ $repo"
         fi
     done
     echo "✅ check-all passed."
@@ -30,14 +31,15 @@ lint-all:
     set -e
     echo "🐚 shellcheck..."
     for repo in {{REPOS}} .; do
-        files=$(git -C "$repo" ls-files '*.sh' 2>/dev/null)
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+        files=$(git -C "$rpath" ls-files '*.sh' 2>/dev/null)
         [ -z "$files" ] && continue
-        (cd "$repo" && shellcheck $files) && echo "  ✓ $repo"
+        (cd "$rpath" && shellcheck $files) && echo "  ✓ $repo"
     done
     echo "📐 yamllint (openwrt-config)..."
-    yamllint -c openwrt-config/.yamllint openwrt-config/ansible
+    yamllint -c {{ROOT}}/openwrt-config/.yamllint {{ROOT}}/openwrt-config/ansible
     echo "🎭 ansible-lint (openwrt-config)..."
-    (cd openwrt-config && ansible-lint ansible/site.yml)
+    (cd {{ROOT}}/openwrt-config && ansible-lint ansible/site.yml)
     echo "❄️  nixfmt..."
     nixfmt --check repos.nix
     echo "✅ lint-all passed."
@@ -53,7 +55,7 @@ format-all:
 [group('Maintenance')]
 sync-inventory:
     @echo "🔄 Syncing Ansible inventory from Nix source of truth..."
-    @if [ -f ../nix-config/scripts/gen-ansible-inventory.sh ]; then ../nix-config/scripts/gen-ansible-inventory.sh > openwrt-config/ansible/inventory.ini; else ../nix/nix-config/scripts/gen-ansible-inventory.sh > openwrt-config/ansible/inventory.ini; fi
+    @if [ -f {{ROOT}}/nix-config/scripts/gen-ansible-inventory.sh ]; then {{ROOT}}/nix-config/scripts/gen-ansible-inventory.sh > {{ROOT}}/openwrt-config/ansible/inventory.ini; else {{ROOT}}/nix/nix-config/scripts/gen-ansible-inventory.sh > {{ROOT}}/openwrt-config/ansible/inventory.ini; fi
     @echo "✅ inventory.ini updated."
 
 # Remove build artifacts everywhere and repack git repos.
@@ -63,10 +65,11 @@ clean-all:
     set -e
     echo "🧹 Cleaning artifacts..."
     rm -rf result dist bin
-    (cd openwrt-builder && just clean) || true
+    (cd {{ROOT}}/openwrt-builder && just clean) || true
     for repo in {{REPOS}} .; do
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
         echo "  🗜  git gc: $repo"
-        git -C "$repo" gc --quiet || true
+        git -C "$rpath" gc --quiet || true
     done
     echo "✅ clean-all done."
 

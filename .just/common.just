@@ -1,7 +1,7 @@
 # --- Shared Variables ---
 
-# Get the absolute path to the project root (parent of this justfile)
-ROOT := parent_directory(justfile())
+# Get the absolute path to the project root (parent of openwrt directory)
+ROOT := parent_directory(justfile_directory())
 
 # Identify openwrt-* repositories in the root (trimmed of any extra whitespace)
 REPOS := shell("find " + ROOT + " -maxdepth 1 -name 'openwrt-*' -type d -printf '%f\n' | xargs echo -n")

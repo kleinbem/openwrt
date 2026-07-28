@@ -67,16 +67,17 @@ status-all:
         printf "REPO\tCHANGE\t@ STATE\tAHEAD OF ORIGIN\n"
         for repo in {{REPOS}} .; do
             name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
-            change=$(cd $repo && jj log -r @ --no-graph -T 'change_id.short()' 2>/dev/null)
-            empty=$(cd $repo && jj log -r @ --no-graph -T 'if(empty, "1", "0")' 2>/dev/null)
-            desc=$(cd $repo && jj log -r @ --no-graph -T 'description.first_line()' 2>/dev/null)
+            rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+            change=$(cd "$rpath" && jj log -r @ --no-graph -T 'change_id.short()' 2>/dev/null)
+            empty=$(cd "$rpath" && jj log -r @ --no-graph -T 'if(empty, "1", "0")' 2>/dev/null)
+            desc=$(cd "$rpath" && jj log -r @ --no-graph -T 'description.first_line()' 2>/dev/null)
             desc_short="${desc:0:60}"
             [ "${#desc}" -gt 60 ] && desc_short="${desc_short}…"
             if [ "$empty" = "1" ]; then status_desc="(empty)";
             elif [ -z "$desc" ]; then status_desc="⚠ undescribed";
             else status_desc="📝 $desc_short"; fi
-            described_n=$(cd $repo && jj log -r 'main@origin..@ & ~empty()' --no-graph -T 'if(description, "1\n", "")' 2>/dev/null | grep -c . || true)
-            undescribed_n=$(cd $repo && jj log -r 'main@origin..@ & ~empty()' --no-graph -T 'if(description, "", "1\n")' 2>/dev/null | grep -c . || true)
+            described_n=$(cd "$rpath" && jj log -r 'main@origin..@ & ~empty()' --no-graph -T 'if(description, "1\n", "")' 2>/dev/null | grep -c . || true)
+            undescribed_n=$(cd "$rpath" && jj log -r 'main@origin..@ & ~empty()' --no-graph -T 'if(description, "", "1\n")' 2>/dev/null | grep -c . || true)
             if [ "$described_n" -eq 0 ] && [ "$undescribed_n" -eq 0 ]; then ahead="(none)";
             elif [ "$undescribed_n" -eq 0 ]; then ahead="📝 $described_n ready";
             elif [ "$described_n" -eq 0 ]; then ahead="⚠ $undescribed_n undescribed";
@@ -96,9 +97,9 @@ remote-status:
         {
             printf "REPO\tMAIN\tCI\tPRs\tISSUES\n"
             for repo in {{REPOS}} .; do
-                if [ "$repo" = "." ]; then name="openwrt"; ghrepo="kleinbem/openwrt";
-                else name="$repo"; ghrepo="kleinbem/$repo"; fi
-                sha=$(git -C $repo rev-parse --short origin/main 2>/dev/null || echo "?")
+                if [ "$repo" = "." ]; then name="openwrt"; ghrepo="kleinbem/openwrt"; rpath="{{ROOT}}/openwrt";
+                else name="$repo"; ghrepo="kleinbem/$repo"; rpath="{{ROOT}}/$repo"; fi
+                sha=$(git -C "$rpath" rev-parse --short origin/main 2>/dev/null || echo "?")
                 ci=$(gh run list --repo $ghrepo --branch main --limit 1 --json conclusion,status \
                     --jq ".[0] | if .status==\"in_progress\" then \"🔄\" elif .conclusion==\"success\" then \"✅\" elif .conclusion==\"failure\" then \"❌\" elif .conclusion==\"cancelled\" then \"⏹\" else \"?\" end" 2>/dev/null || echo "—")
                 prs=$(gh pr list --repo $ghrepo --state open --json number --jq "length" 2>/dev/null || echo "?")
@@ -119,10 +120,11 @@ diff-all *args="":
     any=0
     for repo in {{REPOS}} .; do
         name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
-        if [ -n "$(cd $repo && jj diff --summary 2>/dev/null)" ]; then
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+        if [ -n "$(cd "$rpath" && jj diff --summary 2>/dev/null)" ]; then
             any=1
             gum style --foreground 212 --padding "0 1" --margin "1 0 0 0" "📦 $name"
-            (cd $repo && jj diff {{args}})
+            (cd "$rpath" && jj diff {{args}})
         fi
     done
     if [ "$any" -eq 0 ]; then
@@ -141,7 +143,8 @@ check-signatures:
         printf "REPO\tCOMMITS\tSTATUS\tDETAIL\n"
         for repo in {{REPOS}} .; do
             name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
-            lines=$(git -C $repo log --format='%H %G? %s' "origin/main..main" 2>/dev/null || true)
+            rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+            lines=$(git -C "$rpath" log --format='%H %G? %s' "origin/main..main" 2>/dev/null || true)
             unsigned=$(echo "$lines" | awk '$2 == "N" || $2 == "B" || $2 == "E"')
             unverified=$(echo "$lines" | awk '$2 == "U" || $2 == "X" || $2 == "Y" || $2 == "R"')
             ahead=$(echo "$lines" | grep -c . || true)
@@ -179,37 +182,38 @@ sign-unsigned:
     any_done=0
     for repo in {{REPOS}} .; do
         name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
-        if [ -n "$(cd $repo && jj log -r 'main..@' --no-graph -T 'description' 2>/dev/null)" ]; then
-            (cd $repo && jj bookmark move main --to @ >/dev/null 2>&1 || true)
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+        if [ -n "$(cd "$rpath" && jj log -r 'main..@' --no-graph -T 'description' 2>/dev/null)" ]; then
+            (cd "$rpath" && jj bookmark move main --to @ >/dev/null 2>&1 || true)
         fi
-        unsigned=$(git -C $repo log --format='%G?' "origin/main..main" 2>/dev/null \
+        unsigned=$(git -C "$rpath" log --format='%G?' "origin/main..main" 2>/dev/null \
             | awk '$1 != "G" && $1 != ""' | wc -l)
         if [ "$unsigned" -gt 0 ]; then
             gum style --foreground 212 "  🖊  $name — re-signing $unsigned commit(s)..."
             # jj-colocated repos frequently leave git's HEAD detached;
             # `git rebase` needs an attached branch.
-            head_ref=$(cd $repo && git symbolic-ref --quiet HEAD 2>/dev/null || true)
+            head_ref=$(cd "$rpath" && git symbolic-ref --quiet HEAD 2>/dev/null || true)
             if [ "$head_ref" != "refs/heads/main" ]; then
-                (cd $repo && git checkout -f main >/dev/null 2>&1 || true)
+                (cd "$rpath" && git checkout -f main >/dev/null 2>&1 || true)
             fi
             # Stash dance with a unique marker so we never pop a pre-existing stash.
             stash_msg="auto-stash-sign-unsigned-$$-$(date +%s%N)"
-            (cd $repo && git stash push -u -m "$stash_msg" >/dev/null 2>&1 || true)
-            stash_ref=$(cd $repo && git stash list 2>/dev/null | grep -F "$stash_msg" | head -1 | cut -d: -f1)
-            (cd $repo && git checkout main >/dev/null 2>&1 || true)
-            if (cd $repo && git rebase --exec \
+            (cd "$rpath" && git stash push -u -m "$stash_msg" >/dev/null 2>&1 || true)
+            stash_ref=$(cd "$rpath" && git stash list 2>/dev/null | grep -F "$stash_msg" | head -1 | cut -d: -f1)
+            (cd "$rpath" && git checkout main >/dev/null 2>&1 || true)
+            if (cd "$rpath" && git rebase --exec \
                 'if [ "$(git log -1 --format=%G?)" != "G" ]; then git commit --amend --no-edit -S; fi' \
                 origin/main); then
-                if [ "$(git -C $repo symbolic-ref --quiet HEAD 2>/dev/null)" = "refs/heads/main" ]; then
-                    (cd $repo && jj git import >/dev/null 2>&1) \
+                if [ "$(git -C "$rpath" symbolic-ref --quiet HEAD 2>/dev/null)" = "refs/heads/main" ]; then
+                    (cd "$rpath" && jj git import >/dev/null 2>&1) \
                         && gum style --foreground 46 "    ↳ main at signed HEAD; jj bookmark synced"
                 else
-                    (cd $repo && git branch -f main HEAD && git checkout main >/dev/null 2>&1 && jj git import >/dev/null 2>&1) \
+                    (cd "$rpath" && git branch -f main HEAD && git checkout main >/dev/null 2>&1 && jj git import >/dev/null 2>&1) \
                         && gum style --foreground 46 "    ↳ reattached main + jj bookmark"
                 fi
-                [ -n "$stash_ref" ] && (cd $repo && git stash pop "$stash_ref" >/dev/null 2>&1 || true)
+                [ -n "$stash_ref" ] && (cd "$rpath" && git stash pop "$stash_ref" >/dev/null 2>&1 || true)
             else
-                [ -n "$stash_ref" ] && (cd $repo && git stash pop "$stash_ref" >/dev/null 2>&1 || true)
+                [ -n "$stash_ref" ] && (cd "$rpath" && git stash pop "$stash_ref" >/dev/null 2>&1 || true)
                 gum style --foreground 196 "    ⚠ rebase failed in $name — fix manually"
             fi
             any_done=1
@@ -231,9 +235,10 @@ pull-all:
     gum style --border normal --padding "0 2" --border-foreground 212 --foreground 212 "📥 Fetching + rebasing all repositories"
     for repo in {{REPOS}} .; do
         name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
         url="https://github.com/kleinbem/${name}.git"
         gum spin --spinner dot --title "$name..." -- \
-            bash -c "cd $repo && git -c credential.helper= -c credential.helper='!gh auth git-credential' fetch '$url' main:refs/remotes/origin/main >/dev/null 2>&1 && jj git import >/dev/null 2>&1 && jj rebase -d main@origin >/dev/null 2>&1 || true"
+            bash -c "cd '$rpath' && git -c credential.helper= -c credential.helper='!gh auth git-credential' fetch '$url' main:refs/remotes/origin/main >/dev/null 2>&1 && jj git import >/dev/null 2>&1 && jj rebase -d main@origin >/dev/null 2>&1 || true"
     done
     gum style --foreground 46 --margin "1 0" "✅ pull-all complete. Run: just jj::status-all"
 
@@ -256,10 +261,11 @@ save-all message="":
     any=0
     for repo in {{REPOS}} .; do
         name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
-        if [ -n "$(cd $repo && jj diff --summary 2>/dev/null)" ]; then
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+        if [ -n "$(cd "$rpath" && jj diff --summary 2>/dev/null)" ]; then
             any=1
             gum style --foreground 212 "  📝 $name — describing..."
-            (cd $repo && jj describe -m "$msg" && jj bookmark move main --to @ && jj new) >/dev/null 2>&1
+            (cd "$rpath" && jj describe -m "$msg" && jj bookmark move main --to @ && jj new) >/dev/null 2>&1
         fi
     done
     if [ "$any" -eq 0 ]; then
@@ -295,12 +301,13 @@ push-all:
     #!/usr/bin/env bash
     set -uo pipefail
     gum style --border normal --padding "0 2" --border-foreground 212 --foreground 212 "📤 Pushing all changes (HTTPS+gh, verified)"
-    root="$PWD"
+    root="{{ROOT}}"
     failed=()
     for repo in {{REPOS}} .; do
         name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
         url="https://github.com/kleinbem/${name}.git"
-        cd "$root/$repo" 2>/dev/null || { gum style --foreground 196 "  ❌ $name (dir missing)"; failed+=("$name"); continue; }
+        cd "$rpath" 2>/dev/null || { gum style --foreground 196 "  ❌ $name (dir missing)"; failed+=("$name"); continue; }
         if [ -n "$(jj log -r 'main..@' --no-graph -T 'description' 2>/dev/null)" ]; then
             jj bookmark move main --to @ >/dev/null 2>&1 || true
         fi
@@ -322,7 +329,7 @@ push-all:
             printf '%s\n' "$out" | grep -iE 'rejected|error|denied|signature|fetch first|behind|protected|not found' | sed 's/^/     /' | head -3
         fi
     done
-    cd "$root"
+    cd "$root/openwrt"
     if [ ${#failed[@]} -gt 0 ]; then
         gum style --foreground 196 --margin "1 0" "❌ NOT pushed: ${failed[*]}"
         gum style --foreground 220 "   ↳ diverged remote → 'just jj::pull-all' then retry  ·  unsigned → 'just jj::sign-unsigned'  ·  repo missing on GitHub → create via github-config (terraform)"
@@ -346,13 +353,14 @@ bootstrap:
     set -e
     gum style --border normal --padding "0 2" --border-foreground 212 --foreground 212 "🌱 Bootstrapping workspace from repos.nix"
     for repo in $(nix eval --raw --file repos.nix --apply 'rs: builtins.concatStringsSep " " (builtins.attrNames rs)'); do
-        if [ -d "$repo" ]; then
+        rpath="{{ROOT}}/$repo"
+        if [ -d "$rpath" ]; then
             gum style --foreground 46 "  ✓ $repo (already cloned)"
         else
             url=$(nix eval --raw --file repos.nix --apply "rs: rs.\"$repo\"")
             gum spin --spinner dot --title "cloning $repo..." -- bash -c "
-                git clone '$url' '$repo' >/dev/null 2>&1
-                cd '$repo' && jj git init --colocate >/dev/null 2>&1 && jj bookmark track main --remote=origin >/dev/null 2>&1
+                git clone '$url' '$rpath' >/dev/null 2>&1
+                cd '$rpath' && jj git init --colocate >/dev/null 2>&1 && jj bookmark track main --remote=origin >/dev/null 2>&1
             "
             gum style --foreground 46 "  ✓ $repo cloned + jj-initialised"
         fi
@@ -367,7 +375,9 @@ init-bookmarks:
     gum style --border normal --padding "0 2" --border-foreground 212 --foreground 212 "🔗 Linking local main ↔ origin/main"
     for repo in {{REPOS}} .; do
         name=$([ "$repo" = "." ] && echo "openwrt" || echo "$repo")
+        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
         gum spin --spinner dot --title "$name..." -- \
-            bash -c "cd $repo && jj bookmark track main --remote=origin 2>&1 | grep -v 'already tracked' || true"
+            bash -c "cd '$rpath' && jj bookmark track main --remote=origin 2>&1 | grep -v 'already tracked' || true"
     done
+    gum style --foreground 46 --margin "1 0" "✅ Bookmark tracking ensured."
     gum style --foreground 46 --margin "1 0" "✅ Bookmark tracking ensured."

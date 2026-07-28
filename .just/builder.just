@@ -6,10 +6,10 @@ set working-directory := ".."
 [no-cd]
 build *args:
     @echo "🏗️  Delegating build to openwrt-builder..."
-    cd openwrt-builder && just build {{args}}
+    cd {{ROOT}}/openwrt-builder && just build {{args}}
 
 [group('Builder')]
 [no-cd]
 list-profiles:
     @echo "📋 Available Builder Profiles:"
-    @cd openwrt-builder && just list
+    @cd {{ROOT}}/openwrt-builder && just list
