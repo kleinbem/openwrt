@@ -31,18 +31,32 @@ check-all:
     @just maintenance::check-all
 
 [group("Main")]
-status-all:
-    @just jj::status-all
+status-all filter="":
+    @just jj::status-all {{filter}}
 
 [group("Main")]
-ship *args="":
-    @just jj::ship {{args}}
+save-all message="" filter="":
+    @just jj::save-all "{{message}}" {{filter}}
+
+[group("Main")]
+ship-all message="" filter="":
+    @just jj::ship-all "{{message}}" {{filter}}
+
+alias ship := ship-all
+
+[group("Main")]
+pull-all filter="":
+    @just jj::pull-all {{filter}}
+
+[group("Main")]
+push-all filter="":
+    @just jj::push-all {{filter}}
 
 # Pass-through to any sub-repo's justfile from the meta root.
 # Usage: just in openwrt-config check core-gateway
 [group("Main")]
 in repo *args:
-    @cd {{repo}} && just {{args}}
+    @cd {{ROOT}}/{{repo}} && just {{args}}
 
 # --- Workspace Hub (Premium Interactive Menu) ---
 

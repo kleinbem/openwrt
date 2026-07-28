@@ -5,15 +5,15 @@
 			"name": "openwrt"
 		},
 		{
-			"path": "openwrt-builder",
+			"path": "../openwrt-builder",
 			"name": "Builder"
 		},
 		{
-			"path": "openwrt-config",
+			"path": "../openwrt-config",
 			"name": "Config (Ansible)"
 		},
 		{
-			"path": "openwrt-secrets",
+			"path": "../openwrt-secrets",
 			"name": "Secrets"
 		},
 		{
@@ -114,7 +114,7 @@
 			{
 				"label": "Update All Repos",
 				"type": "shell",
-				"command": "just update",
+				"command": "just jj::sync",
 				"group": {
 					"kind": "build",
 					"isDefault": false
@@ -124,7 +124,7 @@
 			{
 				"label": "Check Status",
 				"type": "shell",
-				"command": "just status",
+				"command": "just status-all",
 				"group": "test",
 				"problemMatcher": []
 			},

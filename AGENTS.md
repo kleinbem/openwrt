@@ -4,7 +4,9 @@ Guidance for AI assistants (Claude Code, Gemini CLI, Codex, Aider, Antigravity, 
 
 ## Overview
 
-This is a **meta-workspace dir** — a tooling-only orchestrator for the OpenWrt router infrastructure, mirroring the `../nix` meta-workspace. **There is no `flake.nix` at the meta root.** The meta dir holds `just`, `repos.nix`, `.agent/`, and the `.envrc` that points direnv at `../nix/nix-devshells#openwrt`. Bootstrap a fresh checkout with `just jj::bootstrap`.
+This is a **meta-workspace dir** — a tooling-only orchestrator for the OpenWrt router infrastructure, mirroring the `../nix` meta-workspace. **There is no `flake.nix` at the meta root.** The meta dir holds `just`, `.agent/`, and the `.envrc` that points direnv at `../nix/nix-devshells#openwrt`. The fleet-wide sub-repo manifest lives at `kleinbem/repos.nix`, not here.
+
+**On a truly fresh clone of just this repo, run `bash tools/bootstrap.sh` first** — `just` itself won't parse until `kleinbem/` exists (the shared `.just/common.just` and `.just/jj.just` are symlinks into it), and `tools/bootstrap.sh` clones `kleinbem/` before handing off to the normal `just jj::bootstrap`. On any machine where `kleinbem/` already exists, `just jj::bootstrap` alone is enough.
 
 ## Key Commands
 
@@ -39,14 +41,18 @@ just maintenance::clean-all       # Remove build artifacts, git gc all repos
 
 ## Repo Hierarchy
 
+Sub-repos are **flat siblings of `openwrt/`** (under the workspace root, `~/Develop/github.com/kleinbem/`) — NOT nested inside `openwrt/`, and there's no compat symlink either, so every reference goes through `../` (or `{{ROOT}}` in justfiles):
+
 ```
-openwrt/ (meta workspace dir — NO flake.nix; tooling only: just, repos.nix, .agent/)
-├── openwrt-builder  ← firmware image generation (OpenWrt ImageBuilder, profile bpi-r4)
-├── openwrt-config   ← declarative runtime config of the routers via Ansible
-└── openwrt-secrets  ← sops/age-encrypted secrets (wifi keys, vault password)
+~/Develop/github.com/kleinbem/  (workspace root)
+├── kleinbem/         ← profile repo; fleet-wide repos.nix + shared .just/ modules live here
+├── openwrt/          ← meta workspace dir — NO flake.nix; tooling only: just, .agent/
+├── openwrt-builder   ← firmware image generation (OpenWrt ImageBuilder, profile bpi-r4)
+├── openwrt-config    ← declarative runtime config of the routers via Ansible
+└── openwrt-secrets   ← sops/age-encrypted secrets (wifi keys, vault password)
 ```
 
-All sub-repos are **standalone git+jj repos** cloned under the meta dir (NOT git submodules — see `repos.nix` for the manifest, `just jj::bootstrap` to set up a fresh machine).
+All sub-repos are **standalone git+jj repos** (NOT git submodules — see `kleinbem/repos.nix` for the fleet-wide manifest, `bash tools/bootstrap.sh` to set up a truly fresh machine or `just jj::bootstrap` once `kleinbem/` exists).
 
 ## Ground Truth
 

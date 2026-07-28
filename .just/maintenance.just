@@ -15,23 +15,23 @@ check-all: lint-all
     (cd {{ROOT}}/openwrt-config && ansible-playbook -i ansible/inventory.ini ansible/site.yml --syntax-check)
     echo "📜 Justfile parse (meta + sub-repos)..."
     just --list >/dev/null
-    for repo in {{REPOS}} .; do
-        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+    for repo in {{REPOS}}; do
+        rpath="{{ROOT}}/$repo"
         if [ -f "$rpath/Justfile" ] || [ -f "$rpath/justfile" ]; then
             (cd "$rpath" && just --list >/dev/null) && echo "  ✓ $repo"
         fi
     done
     echo "✅ check-all passed."
 
-# Lint every repo: shellcheck on tracked shell scripts, yamllint +
-# ansible-lint on the config repo, nixfmt on meta nix files.
+# Lint every repo in scope: shellcheck on tracked shell scripts, plus
+# yamllint + ansible-lint on the config repo.
 [group('Maintenance')]
 lint-all:
     #!/usr/bin/env bash
     set -e
     echo "🐚 shellcheck..."
-    for repo in {{REPOS}} .; do
-        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+    for repo in {{REPOS}}; do
+        rpath="{{ROOT}}/$repo"
         files=$(git -C "$rpath" ls-files '*.sh' 2>/dev/null)
         [ -z "$files" ] && continue
         (cd "$rpath" && shellcheck $files) && echo "  ✓ $repo"
@@ -40,15 +40,14 @@ lint-all:
     yamllint -c {{ROOT}}/openwrt-config/.yamllint {{ROOT}}/openwrt-config/ansible
     echo "🎭 ansible-lint (openwrt-config)..."
     (cd {{ROOT}}/openwrt-config && ansible-lint ansible/site.yml)
-    echo "❄️  nixfmt..."
-    nixfmt --check repos.nix
     echo "✅ lint-all passed."
 
-# Format what we can format (nix files; linters above are check-only).
+# Nothing to format locally — openwrt/ owns no .nix files (repos.nix moved to
+# kleinbem/, formatted as part of the fleet-wide manifest there) and the
+# per-repo shell/yaml/ansible linters above are check-only.
 [group('Maintenance')]
 format-all:
-    nixfmt repos.nix
-    @echo "✅ format-all done."
+    @echo "✅ format-all done (nothing to format in openwrt/ itself)."
 
 # Regenerate ansible inventory from the master source of truth
 # (nix-config/inventory.nix in the sibling nix workspace).
@@ -66,8 +65,8 @@ clean-all:
     echo "🧹 Cleaning artifacts..."
     rm -rf result dist bin
     (cd {{ROOT}}/openwrt-builder && just clean) || true
-    for repo in {{REPOS}} .; do
-        rpath=$([ "$repo" = "." ] && echo "{{ROOT}}/openwrt" || echo "{{ROOT}}/$repo")
+    for repo in {{REPOS}}; do
+        rpath="{{ROOT}}/$repo"
         echo "  🗜  git gc: $repo"
         git -C "$rpath" gc --quiet || true
     done

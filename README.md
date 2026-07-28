@@ -1,6 +1,6 @@
 # OpenWrt Meta-Workspace
 
-Entry point and conductor for the federated OpenWrt router infrastructure — a **tooling-only orchestrator** (no `flake.nix` here), mirroring the `../nix` meta-workspace. Sub-repos are standalone git+jj repos listed in `repos.nix` (not submodules).
+Entry point and conductor for the federated OpenWrt router infrastructure — a **tooling-only orchestrator** (no `flake.nix` here), mirroring the `../nix` meta-workspace. Sub-repos are standalone git+jj repos listed in `../kleinbem/repos.nix` (the fleet-wide manifest, not submodules).
 
 ## 📂 Structure
 
@@ -13,7 +13,8 @@ Entry point and conductor for the federated OpenWrt router infrastructure — a 
 
 1. **Bootstrap** (fresh machine):
    ```bash
-   just jj::bootstrap   # Clone all sub-repos from repos.nix + init jj
+   bash tools/bootstrap.sh   # Clones kleinbem/ first if missing, then all sub-repos + init jj
+   # Once kleinbem/ already exists, `just jj::bootstrap` alone is enough.
    ```
 
 2. **Enter the Workspace**:
