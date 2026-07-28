@@ -53,7 +53,7 @@ format-all:
 [group('Maintenance')]
 sync-inventory:
     @echo "🔄 Syncing Ansible inventory from Nix source of truth..."
-    ../nix/nix-config/scripts/gen-ansible-inventory.sh > openwrt-config/ansible/inventory.ini
+    @if [ -f ../nix-config/scripts/gen-ansible-inventory.sh ]; then ../nix-config/scripts/gen-ansible-inventory.sh > openwrt-config/ansible/inventory.ini; else ../nix/nix-config/scripts/gen-ansible-inventory.sh > openwrt-config/ansible/inventory.ini; fi
     @echo "✅ inventory.ini updated."
 
 # Remove build artifacts everywhere and repack git repos.
