@@ -13,7 +13,7 @@ stays in the **infra** VLAN so headless LUKS unlock keeps working within-zone.
 
 | VLAN | Subnet         | Zone     | Purpose                                   |
 |-----:|----------------|----------|-------------------------------------------|
-| 1    | 10.0.0.0/24    | infra    | fleet servers: Tang `.5`, AdGuard `.21`, core-pi `.22`, orin `.12`, gateway `.1` |
+| 1    | 10.0.0.0/24    | infra    | fleet servers: Tang `.5`, AdGuard `.21`, core-pi `.22`, orin `.15`, gateway `.1` |
 | 10   | 10.0.10.0/24   | trusted  | laptops, phones, workstations             |
 | 20   | 10.0.20.0/24   | iot      | smart-home gear — internet + DNS only     |
 | 30   | 10.0.30.0/24   | cameras  | cameras/NVR — no internet                 |
@@ -34,7 +34,8 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 | 10.0.0.2  | ap-upstairs   | BPI-R4 AP / LXC-capable (upstairs)     |
 | 10.0.0.5  | nixos-nvme    | workstation + Tang (LUKS unlock anchor¹)|
 | 10.0.0.3–.4, .6–.9 | *(free)* | network-layer range — next `ap-<location>` etc. (LXC "brain" containers dropped 2026-07-18: never deployed, tenants live on the fleet; ap-upstairs keeps the capability) |
-| 10.0.0.12 | orin-nano     | AI edge + Tang                         |
+| 10.0.0.15 | orin-nano     | AI edge + Tang                         |
+| 10.0.0.16 | mac-mini      | workstation (Mid-2011, legacy hardware)|
 | 10.0.0.21 | hass-pi       | Home Assistant + AdGuard + Tang        |
 | 10.0.0.22 | core-pi       | cache entrypoint + Tang                |
 | 10.0.0.30 | nasbook       | NAS + Tang                             |
