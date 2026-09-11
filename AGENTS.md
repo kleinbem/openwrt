@@ -49,7 +49,7 @@ Sub-repos are **flat siblings of `openwrt/`** (under the workspace root, `~/Deve
 ├── openwrt/          ← meta workspace dir — NO flake.nix; tooling only: just, .agent/
 ├── openwrt-builder   ← firmware image generation (OpenWrt ImageBuilder, profile bpi-r4)
 ├── openwrt-config    ← declarative runtime config of the routers via Ansible
-└── openwrt-secrets   ← sops/age-encrypted secrets (wifi keys, vault password)
+└── kleinbem-secrets  ← sops/age-encrypted secrets for the whole fleet, incl. wifi keys, vault password
 ```
 
 All sub-repos are **standalone git+jj repos** (NOT git submodules — see `kleinbem/repos.nix` for the fleet-wide manifest, `bash tools/bootstrap.sh` to set up a truly fresh machine or `just jj::bootstrap` once `kleinbem/` exists).
@@ -63,6 +63,6 @@ All sub-repos are **standalone git+jj repos** (NOT git submodules — see `klein
 ## Code Standards
 
 - **Firmware sources are pinned**: `openwrt-builder/profiles/*.conf` pin an exact OpenWrt release AND the ImageBuilder sha256. Bumps change both together; never point at `snapshots/`.
-- **Secrets**: sops/age via `openwrt-secrets`. Never commit plaintext secrets — including Wi-Fi credentials in ansible `group_vars`.
+- **Secrets**: sops/age via `kleinbem-secrets`. Never commit plaintext secrets — including Wi-Fi credentials in ansible `group_vars`.
 - Shell scripts pass `shellcheck`; YAML passes `yamllint` + `ansible-lint` (`just check-all` before shipping).
 - jj is the primary VCS verb; use git only for genuinely-git operations.
