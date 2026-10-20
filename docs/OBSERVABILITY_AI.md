@@ -16,7 +16,7 @@ auto-deploys. The OpenWrt side already emits everything this needs.
 
 ## Where the SSDs fit
 - **core-gateway NVMe** = storage: persistent local logs, banIP data, swap —
-  keeps the RAM-constrained (2 GiB) routing box light while not losing history.
+  keeps the routing box light while not losing history.
 - **ap-upstairs NVMe** = compute: LXC host. This is the natural place to run a
   *local* lightweight collector/agent if you don't want everything centralised.
 
