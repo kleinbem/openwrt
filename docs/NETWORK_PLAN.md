@@ -33,7 +33,7 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 | 10.0.0.1  | core-gateway  | BPI-R4 main gateway (downstairs)       |
 | 10.0.0.2  | ap-upstairs   | BPI-R4 AP / LXC-capable (upstairs)     |
 | 10.0.0.5  | nixos-nvme    | workstation + Tang (LUKS unlock anchor¹)|
-| 10.0.0.3–.4, .6–.9 | *(free)* | network-layer range — next `ap-<location>` etc. (LXC "brain" containers dropped 2026-07-18: never deployed, tenants live on the fleet; ap-upstairs keeps the capability) |
+| 10.0.0.3–.4, .6–.9 | *(reserved)* | network-layer range for the next `ap-<location>` units: the 4 Orbi APs (1× RBR50 + 3× RBS50, see SYSTEM_REFERENCE) take four of these once flashed; add each to `inventory.nix` with `board = "orbi-rbr50"`/`"orbi-rbs50"` and tags `physical ap`. (LXC "brain" containers dropped 2026-07-18.) |
 | 10.0.0.15 | orin-nano     | AI edge + Tang                         |
 | 10.0.0.16 | mac-mini      | workstation (Mid-2011, legacy hardware)|
 | 10.0.0.21 | hass-pi       | Home Assistant + AdGuard + Tang        |
@@ -88,11 +88,12 @@ three tiers — the network role derives everything from it:
 - **QoS/SQM** (`roles/qos`) — cake bufferbloat control on the WAN; set
   `wan_down_mbit`/`wan_up_mbit` to your measured line speed to enable.
 - **banIP** (`roles/banip`) — threat-feed IP blocking at the WAN edge (modest
-  RAM-conscious feed set for the 2 GiB boards).
+  high-signal feed set; sets live in RAM).
 - **Firewall defaults** — drop-invalid + SYN-flood protection. Flow-offloading
   deliberately OFF: it bypasses the qdisc and would defeat SQM (latency for
-  WFH calls beats raw throughput at home WAN speeds; HW offload also needs
-  `mem=2048M`). Flip both if a future fast WAN needs it and you drop SQM.
+  WFH calls beats raw throughput at home WAN speeds; HW offload on MT7988 is
+  also the one thing known to break with 4 GiB addressed). Flip both if a
+  future fast WAN needs it and you drop SQM — and re-test 4 GiB first.
 - **IGMP/MLD snooping** on `br-lan` — multicast only to subscribers (cast/
   AirPlay/mDNS), not flooded.
 - **802.11k/v** on every SSID — neighbor reports + BSS transition, so clients
@@ -122,12 +123,19 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
 1. **Bench:** BPI-R4 on an isolated bench, laptop direct-connected to a LAN
    port. Firmware first-boot default stays `192.168.1.1/24` (bench-only address
    — laptop sits on `192.168.1.x`).
-2. **RAM limit (both boards):** append `mem=2048M` to the kernel cmdline via
-   the U-Boot environment (serial console at the bench). MT7988 hardware
-   flow-offloading drops/blocks packets when the full 4 GiB is addressed —
-   upstream-confirmed, unresolved; 2 GiB is the known-good state. Optional
-   later experiment: ap-upstairs (no NAT/PPE role, WED off) back to 4 GiB for
-   more LXC headroom — bench-soak first.
+2. **RAM (both boards): full 4 GiB** (decision 2026-10-20). The former
+   `mem=2048M` cap only worked around MT7988 hardware flow-offloading
+   dropping packets with 4 GiB addressed (still unresolved upstream as far
+   as we could verify) — and HW offload is deliberately OFF here for SQM, so
+   the cap bought nothing. `uEnv.txt` carries no `mem=`; at the bench make
+   sure no SAVED U-Boot environment still has one (`printenv bootargs` on the
+   serial console, `env default -a; saveenv` if it does). What to watch on
+   the first 4 GiB boot: `free -m` ≈ 3.9 GiB and no `mem=` in
+   `/proc/cmdline` (the common role asserts both); `dmesg | grep -iE
+   'mt7996|mt76|ppe|mtk_eth|swiotlb|dma'` for the Wi-Fi card and ethernet
+   driver coming up clean (a 32-bit-DMA device would show swiotlb bounce
+   buffering); a wired throughput + Wi-Fi smoke test. If HW offload is ever
+   turned on, re-test with 4 GiB before trusting it.
 3. **Provision:** `just provision` (or `just config::configure core-gateway`). The
    network role builds the VLANs, firewall zones, per-VLAN DHCP, and Wi-Fi from
    the vars in `openwrt-config/ansible/group_vars/all.yml`. Applying it moves the
@@ -147,13 +155,15 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
 All six pinned; the VLAN/switch config is authored as `roles/network`
 (gated on `vlan_segmentation_live` in group_vars). One bench verification
 remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
-(`ls /sys/class/net`) match `port_maps` in group_vars.
+(`ls /sys/class/net`) match the board's `port_map` in
+`group_vars/board_<board>.yml`.
 
 1. ~~**Port → zone map**~~ **Resolved 2026-07-17** — gateway + AP identical:
    lan1 = infra untagged (fleet/management), lan2 = trusted untagged,
    lan3 = cameras untagged (wired cams); SFP+ (`sfp2`) = tagged trunk
    carrying all VLANs between the two BPI-R4s. Map lives in
-   `openwrt-config/ansible/group_vars/all.yml` (`port_maps`).
+   `openwrt-config/ansible/group_vars/board_bpi_r4.yml` (`port_map`); the
+   Orbi APs have their own in `board_orbi_rbr50.yml` (trunk on `wan`).
 2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`.
    Migration-safe layout (2026-07-18), **4 SSIDs** (→ 3 after `16CVG` retires).
    Because the PASSWORD picks the VLAN (not the SSID), the two MPSK SSIDs are

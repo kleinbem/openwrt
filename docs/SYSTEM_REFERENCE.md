@@ -6,12 +6,12 @@ This document serves as the ground truth for the OpenWrt router configuration.
 - **Model**: Banana Pi BPI-R4 (Filogic 880)
 - **Architecture**: aarch64_cortex-a53
 - **CPU**: MediaTek MT7988A
-- **RAM**: 4GB DDR4 — **run at 2 GiB** (`mem=2048M` in U-Boot): MT7988 hardware flow-offloading drops packets when the full 4 GiB is addressed (upstream-unresolved). See docs/NETWORK_PLAN.md.
+- **RAM**: 4 GB DDR4, **used in full** since 2026-10-20 (no `mem=` in `uEnv.txt`). The earlier `mem=2048M` cap only guarded MT7988 hardware flow-offloading, which is off (SQM). `roles/common` asserts the kernel sees ~4 GiB and no `mem=` on the cmdline. See docs/NETWORK_PLAN.md runbook step 2 for what to watch on the first boot.
 - **Storage** (OS boots from **eMMC**; SD = installer/rescue; **both routers
   get an NVMe SSD**, 2026-07-19 — `kmod-nvme` is in the image):
     - core-gateway: 8GB eMMC (OS) + **NVMe** for *storage* — persistent local
       logs, banIP data, swap. Kept to storage (not heavy LXC): it's the
-      routing box and runs at 2 GiB, so compute stays light.
+      routing box, so compute stays light.
     - ap-upstairs: 8GB eMMC (OS) + **NVMe** for *compute* — LXC storage
       (`/srv/lxc`) + data. The compute-capable router.
     - SPI-NAND (128MB): bootloader + recovery fallback (written during install chain)
@@ -20,6 +20,42 @@ This document serves as the ground truth for the OpenWrt router configuration.
 - **Interfaces**:
     - WAN: eth1 (SFP/2.5G)
     - LAN: eth0 (Switch/2.5G)
+
+### Netgear Orbi RBR50 + 3× RBS50 (v1) — access points, reuse of the old mesh
+- **Model**: Netgear Orbi RBK50 kit: 1× RBR50 ("router") + 3× RBS50 (satellites),
+  all **hardware v1** (OpenWrt `ipq40xx/generic`, supported since 22.03).
+  RBR50 verified 2026-10-20 via telnet on the Voxel firmware: `artmtd -r
+  hw_revision` empty, 4 GB eMMC `mmcblk0`. **Each RBS50 still needs the same
+  check before flashing**: USB port on the back = v1; no USB port = v2 (SPI
+  NAND, `hw_revision` 02) — v2 is only an open upstream PR
+  (openwrt/openwrt#22321) and the v1 image will not boot on it.
+- **SoC**: Qualcomm IPQ4019 (4× Cortex-A7 @ 717 MHz), 512 MB RAM, 4 GB eMMC
+- **Radios**: IPQ4019 2.4 GHz 2x2 · IPQ4019 5 GHz 2x2 · QCA9984 5 GHz 4x4 (the
+  stock "backhaul" radio — a normal third AP radio under OpenWrt). Wi-Fi 5.
+- **Ports**: lan1 lan2 lan3 + wan (1 GbE), USB 2.0. No SFP.
+- **Role**: under OpenWrt there is no router/satellite distinction and no
+  Orbi mesh — every unit is an AP (`ap-<location>`, board `orbi-rbr50` /
+  `orbi-rbs50`) behind the BPI-R4s with the same SSIDs/VLANs and
+  802.11r/k/v + DAWN roaming. Topology stays Orbi-like: the RBR50 is wired
+  to a BPI-R4 (tagged trunk on its `wan` port, inventory tag `mesh-gate`),
+  the three RBS50 are **free-standing** on an encrypted 802.11s backhaul
+  (tag `mesh-node`) carried by the 4x4 QCA9984 radio on channel 36 (non-DFS,
+  VHT80). The mesh netdev (`mesh0`) is a tagged trunk port of `br-lan`, so
+  every VLAN + MPSK rides it unchanged; nodes get no wired trunk (loop
+  guard) and STP is on wherever a backhaul exists. Needs
+  `wifi_backhaul_key` in `kleinbem-secrets/openwrt/shared.yaml`.
+  Multi-hop (node via node) works through 802.11s forwarding but costs
+  throughput per hop; place nodes within reach of the gate where possible.
+- **Why bother**: zero cost, already placed around the house, mature ath10k
+  radios with whole-home range, and OpenWrt keeps patching them long after
+  Voxel stops. Not a router: the A7 cores cap SQM at ~200–300 Mbit/s.
+- **Install** (v1): `nmrpflash` with `dist/*-netgear_rbr50-squashfs-factory.img`
+  (or `rbs50`) on the LAN port nearest the power button, device powered on
+  after nmrpflash is listening. Alternative via the OEM/Voxel web UI only
+  after `artmtd -w boot_part 02` + reboot (OpenWrt runs from boot partition 1;
+  the UI always flashes the inactive one). **Order of operations**: the RBR50
+  is today's gateway at 10.0.0.1 — flash it only after the BPI-R4 pair has
+  taken over routing. Revert = nmrpflash with a stock Netgear `.img`.
 
 ## Network Map
 - **Primary Subnet**: `10.0.0.0/16`, VLAN-segmented (infra/trusted/iot/cameras/guest/work — see docs/NETWORK_PLAN.md). `192.168.1.0/24` is bench-bootstrap only.
@@ -35,8 +71,13 @@ This document serves as the ground truth for the OpenWrt router configuration.
   · `16CVG-Guest` (WPA3, isolated). Details: docs/NETWORK_PLAN.md.
 - **Security**: WPA3-SAE where it matters; WPA2 on `16CVG` (old-router match)
   and the `-W2` compat tier (low-trust VLANs only). 6 GHz forced pure WPA3.
-- **Passphrases**: `openwrt-secrets/ansible-vars.yaml` (sops); one per VLAN.
-- **Band**: 2.4 / 5 / 6 GHz (tri-band BE14000 / MT7996)
+- **Passphrases**: `kleinbem-secrets/openwrt/shared.yaml` (sops); one per VLAN.
+- **Band**: 2.4 / 5 / 6 GHz (tri-band BE14000 / MT7996) on the BPI-R4s;
+  2.4 / 5 / 5 GHz (Wi-Fi 5) on the Orbi APs — per-board widths + fixed
+  channel plan in `openwrt-config/ansible/group_vars/board_<board>.yml`.
+- **TX-power assertion**: `roles/wifi` fails the run if any AP radio reports
+  < `wifi_min_txpower_dbm` (15) — the mt76/BE14000 EEPROM trap where every
+  radio comes up at 6 dBm is the usual "R4 coverage is bad" root cause.
 - ⚠️ MPSK dynamic-VLAN needs bench validation (25.12 ucode `wpa_psk_file` #20355).
 
 ## Services (all OpenWrt-native, configured by Ansible roles)
@@ -54,8 +95,11 @@ This document serves as the ground truth for the OpenWrt router configuration.
   WireGuard/Tailscale kmods present but unused)
 
 ## Deployment
-- **Firmware**: OpenWrt release pinned in `openwrt-builder/profiles/bpi-r4.conf` (currently 25.12.5, sha256-verified ImageBuilder)
-- **Image Builder**: Located in `openwrt-builder/` (Profile: `bpi-r4`); `just build bpi-r4` → `./dist`
+- **Firmware**: OpenWrt release pinned per profile in `openwrt-builder/profiles/` (currently 25.12.5, sha256-verified ImageBuilder) — `bpi-r4`, `orbi-rbr50`, `orbi-rbs50`; bump them together.
+- **Image Builder**: Located in `openwrt-builder/`; `just build <profile>` → `./dist`
+- **Inventory**: every OpenWrt host in `inventory.nix` carries `board = …`; the
+  generator emits `[openwrt]` (+ per-host `mgmt_ip`) and `[board_<board>]`
+  groups that select `group_vars/board_<board>.yml`.
 - **Boot**: eMMC (SD = installer/rescue; NVMe on ap-upstairs = LXC data). See docs/NETWORK_PLAN.md.
 - **Configuration**: Applied via Ansible in `openwrt-config/`; inventory generated from `../nix/nix-config/inventory.nix` (`just maintenance::sync-inventory`)
 - **LXC on ap-upstairs**: capability retained (NVMe `/srv/lxc`) but dormant — the NixOS "brain" containers were dropped 2026-07-18 (fleet hosts the services).

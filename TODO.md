@@ -18,6 +18,9 @@
 - [ ] Both routers: mount NVMe at bench (format is manual) — gateway=logs/data, ap=LXC
 - [ ] Create `kleinbem/openwrt` on GitHub via github-config (terraform) and push the meta repo
 - [ ] Flash + provision the BPI-R4 pair (see docs/SYSTEM_REFERENCE.md network map)
+- [x] Board-aware config: `board` in inventory.nix → `board_<board>` groups + per-host `mgmt_ip`; per-board Wi-Fi modes/channel plan/port map; TX-power assertion in roles/wifi; Orbi RBR50/RBS50 v1 builder profiles (2026-10-20)
+- [ ] Orbi units → OpenWrt APs, AFTER the R4 swap: v1-check the 3 RBS50 (USB port), nmrpflash each, add `ap-<location>` entries (board orbi-rbr50/rbs50) to inventory.nix, `just maintenance::sync-inventory`, bench-verify port labels + which 5 GHz radio got channel 36 vs 100
+- [x] Wireless backhaul: 802.11s mesh gate (RBR50, wired) / nodes (3× RBS50, free-standing) on the QCA9984 radio, VLAN trunk over the mesh, STP loop guard (2026-10-20; needs `wifi_backhaul_key` in secrets + bench validation of the QCA9984 radio index)
 
 Deferred (need a design decision or runtime prereq, see docs / session notes):
 - **CrowdSec firewall bouncer** — would enforce the fleet's CrowdSec decisions
