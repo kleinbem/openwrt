@@ -153,15 +153,16 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
 ## Open items — status
 
 All six pinned; the VLAN/switch config is authored as `roles/network`
-(gated on `vlan_segmentation_live` in group_vars). One bench verification
-remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
-(`ls /sys/class/net`) match the board's `port_map` in
+(gated on `vlan_segmentation_live` in group_vars). Port names are the
+OpenWrt 25.12 ones for `bananapi,bpi-r4` (`lan1…lan3`, `wan`, `sfp-lan`,
+`sfp-wan`; upstream commit cd8dcfef); a quick `ls /sys/class/net` on the
+flashed board confirms them against the board's `port_map` in
 `group_vars/board_<board>.yml`.
 
 1. ~~**Port → zone map**~~ **Resolved 2026-07-17** — gateway + AP identical:
    lan1 = infra untagged (fleet/management), lan2 = trusted untagged,
-   lan3 = cameras untagged (wired cams); SFP+ (`sfp2`) = tagged trunk
-   carrying all VLANs between the two BPI-R4s. Map lives in
+   lan3 = cameras untagged (wired cams); SFP2 cage (`sfp-lan`) = tagged
+   trunk carrying all VLANs between the two BPI-R4s. Map lives in
    `openwrt-config/ansible/group_vars/board_bpi_r4.yml` (`port_map`); the
    Orbi APs have their own in `board_orbi_rbr50.yml` (trunk on `wan`).
 2. ~~**SSID → VLAN map + names**~~ **Resolved** — built as `roles/wifi`.
@@ -194,8 +195,13 @@ remains: confirm the DSA port names (`lan1…`, `sfp2`) on the flashed board
 4. ~~**Camera VLAN**~~ **Resolved 2026-07-08** — kept; Frigate on orin-nano
    (infra) pulls RTSP via the infra→cameras allow. Wired cams on lan3,
    Wi-Fi cams on the `-Cam` SSID.
-5. ~~**WAN uplink**~~ **Resolved 2026-07-17** — `eth1` (matches
-   `uci-defaults` + inventory `wan_iface`); not an SFP port.
+5. ~~**WAN uplink**~~ **Resolved 2026-10-30** — `sfp-wan` (SFP1 cage, a
+   copper SFP+ module to the ONT), set in the builder's `uci-defaults` and
+   `wan_iface` in `board_bpi_r4.yml`. Replaces the 2026-07-17 `eth1` choice:
+   OpenWrt 25.12 renamed the BPI-R4's SFP gmacs (old `eth1` → `sfp-lan`,
+   old `eth2` → `sfp-wan`), and the NBI line is 2 Gbit, which the 1G RJ45
+   `wan` port can't carry. That RJ45 `wan` port stays unassigned as a spare
+   (e.g. a future backup WAN).
 6. ~~**Preserve list**~~ **Resolved 2026-07-17** — nothing beyond the fleet's
    static leases (already in openwrt-secrets ansible-vars); no port-forwards
    or custom DNS entries carry over.

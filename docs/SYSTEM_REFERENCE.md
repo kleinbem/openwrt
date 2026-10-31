@@ -18,8 +18,13 @@ This document serves as the ground truth for the OpenWrt router configuration.
     - ⚠️ SSDs are mounted at the bench (format is a **manual** step — the role
       never auto-formats a disk); smartmontools watches health once mounted.
 - **Interfaces**:
-    - WAN: eth1 (SFP/2.5G)
-    - LAN: eth0 (Switch/2.5G)
+    - Names as of OpenWrt 25.12 (`bananapi_bpi-r4`, the two-SFP board)
+    - WAN: `sfp-wan` (SFP1 cage, labelled SFP-WAN): copper SFP+ module to
+      the NBI ONT (2 Gbit line, so WAN needs a multi-gig port)
+    - R4↔R4 trunk: `sfp-lan` (SFP2 cage), tagged, all VLANs
+    - LAN: `lan1 lan2 lan3` (1G switch ports) in `br-lan`; `eth0` is the
+      DSA conduit, not a port
+    - Spare: RJ45 `wan` (1G switch port), unassigned (e.g. a future backup WAN)
 
 ### Netgear Orbi RBR50 + 3× RBS50 (v1) — access points, reuse of the old mesh
 - **Model**: Netgear Orbi RBK50 kit: 1× RBR50 ("router") + 3× RBS50 (satellites),
