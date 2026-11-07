@@ -32,9 +32,13 @@ lint-all:
     #!/usr/bin/env bash
     set -e
     echo "🐚 shellcheck..."
+    list=$(mktemp)
+    trap 'rm -f "$list"' EXIT
     for repo in {{REPOS}}; do
         rpath="{{ROOT}}/$repo"
-        mapfile -d '' files < <(git -C "$rpath" ls-files -z '*.sh' 2>/dev/null)
+        [ -d "$rpath" ] || continue # not cloned here
+        git -C "$rpath" ls-files -z '*.sh' >"$list" || exit 1
+        mapfile -d '' files <"$list"
         [ "${#files[@]}" -eq 0 ] && continue
         # -x -P SCRIPTDIR: follow sourced helpers next to each script.
         (cd "$rpath" && shellcheck -x -P SCRIPTDIR "${files[@]}") || exit 1
