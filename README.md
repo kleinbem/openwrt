@@ -23,6 +23,7 @@ Entry point and conductor for the federated OpenWrt router infrastructure — a 
    nix develop ../nix-devshells#openwrt      # Pure fallback
    ```
    The shell comes from the shared `nix-devshells` repo and loads `just`, `ansible`, `ansible-lint`, `sops`, `age`, `gum`, `fzf`, and friends.
+   For VS Code, open `openwrt.code-workspace`; put personal folders in a copy named `*.local.code-workspace` (gitignored).
 
 3. **Explore the Workspace Hub**:
    ```bash

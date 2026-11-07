@@ -41,6 +41,8 @@ bin/
 .envrc.local
 
 # VS Code Workspace State
+# Personal copy of openwrt.code-workspace with local folders
+*.local.code-workspace
 state.vscdb*
 
 # Agentic AI State (Unreviewed/Sensitive)
