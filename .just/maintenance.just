@@ -12,13 +12,15 @@ check-all: lint-all
     #!/usr/bin/env bash
     set -e
     echo "🎭 Ansible playbook syntax..."
-    (cd {{ROOT}}/openwrt-config && ansible-playbook -i ansible/inventory.ini ansible/site.yml --syntax-check)
+    (cd "{{ROOT}}/openwrt-config" && ansible-playbook -i ansible/inventory.ini ansible/site.yml --syntax-check)
     echo "📜 Justfile parse (meta + sub-repos)..."
     just --list >/dev/null
     for repo in {{REPOS}}; do
         rpath="{{ROOT}}/$repo"
         if [ -f "$rpath/Justfile" ] || [ -f "$rpath/justfile" ]; then
-            (cd "$rpath" && just --list >/dev/null) && echo "  ✓ $repo"
+            # `|| exit` because set -e ignores a failure on the left of `&&`.
+            (cd "$rpath" && just --list >/dev/null) || exit 1
+            echo "  ✓ $repo"
         fi
     done
     echo "✅ check-all passed."
@@ -30,16 +32,22 @@ lint-all:
     #!/usr/bin/env bash
     set -e
     echo "🐚 shellcheck..."
+    list=$(mktemp)
+    trap 'rm -f "$list"' EXIT
     for repo in {{REPOS}}; do
         rpath="{{ROOT}}/$repo"
-        files=$(git -C "$rpath" ls-files '*.sh' 2>/dev/null)
-        [ -z "$files" ] && continue
-        (cd "$rpath" && shellcheck $files) && echo "  ✓ $repo"
+        [ -d "$rpath" ] || continue # not cloned here
+        git -C "$rpath" ls-files -z '*.sh' >"$list" || exit 1
+        mapfile -d '' files <"$list"
+        [ "${#files[@]}" -eq 0 ] && continue
+        # -x -P SCRIPTDIR: follow sourced helpers next to each script.
+        (cd "$rpath" && shellcheck -x -P SCRIPTDIR "${files[@]}") || exit 1
+        echo "  ✓ $repo"
     done
     echo "📐 yamllint (openwrt-config)..."
-    yamllint -c {{ROOT}}/openwrt-config/.yamllint {{ROOT}}/openwrt-config/ansible
+    yamllint -c "{{ROOT}}/openwrt-config/.yamllint" "{{ROOT}}/openwrt-config/ansible"
     echo "🎭 ansible-lint (openwrt-config)..."
-    (cd {{ROOT}}/openwrt-config && ansible-lint ansible/site.yml)
+    (cd "{{ROOT}}/openwrt-config" && ansible-lint ansible/site.yml)
     echo "✅ lint-all passed."
 
 # Nothing to format locally — openwrt/ owns no .nix files (repos.nix moved to
@@ -50,21 +58,28 @@ format-all:
     @echo "✅ format-all done (nothing to format in openwrt/ itself)."
 
 # Regenerate ansible inventory from the master source of truth
-# (nix-config/inventory.nix in the sibling nix workspace).
+# (nix-config/inventory.nix). Written to a temp file first, so a failed
+# generator leaves the old inventory.ini in place.
 [group('Maintenance')]
 sync-inventory:
-    @echo "🔄 Syncing Ansible inventory from Nix source of truth..."
-    @if [ -f {{ROOT}}/nix-config/scripts/gen-ansible-inventory.sh ]; then {{ROOT}}/nix-config/scripts/gen-ansible-inventory.sh > {{ROOT}}/openwrt-config/ansible/inventory.ini; else {{ROOT}}/nix/nix-config/scripts/gen-ansible-inventory.sh > {{ROOT}}/openwrt-config/ansible/inventory.ini; fi
-    @echo "✅ inventory.ini updated."
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔄 Syncing Ansible inventory from Nix source of truth..."
+    out="{{ROOT}}/openwrt-config/ansible/inventory.ini"
+    tmp=$(mktemp "$out.XXXXXX")
+    trap 'rm -f "$tmp"' EXIT
+    "{{ROOT}}/nix-config/scripts/gen-ansible-inventory.sh" > "$tmp"
+    mv "$tmp" "$out"
+    echo "✅ inventory.ini updated."
 
-# Remove build artifacts everywhere and repack git repos.
+# Remove build artifacts here and in openwrt-builder, and repack every repo.
 [group('Maintenance')]
 clean-all:
     #!/usr/bin/env bash
     set -e
     echo "🧹 Cleaning artifacts..."
     rm -rf result dist bin
-    (cd {{ROOT}}/openwrt-builder && just clean) || true
+    (cd "{{ROOT}}/openwrt-builder" && just clean) || true
     for repo in {{REPOS}}; do
         rpath="{{ROOT}}/$repo"
         echo "  🗜  git gc: $repo"

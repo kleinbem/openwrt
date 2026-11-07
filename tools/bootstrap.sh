@@ -8,7 +8,8 @@ set -euo pipefail
 
 # Two levels up from tools/: past openwrt/ itself, to the true workspace
 # root where kleinbem/ is a sibling (matches {{ROOT}} in the shared justfiles).
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 if [ ! -d "$ROOT/kleinbem" ]; then
     echo "🌱 kleinbem/ missing — cloning it first (everything else depends on it)..."
@@ -19,5 +20,5 @@ else
 fi
 
 echo "▶ Continuing with the normal bootstrap (just jj::bootstrap)..."
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$SCRIPT_DIR/.."
 exec just jj::bootstrap "$@"

@@ -6,4 +6,4 @@ set working-directory := ".."
 [no-cd]
 edit file:
     @echo "🔐 Editing secret file: {{file}}..."
-    cd {{ROOT}}/kleinbem-secrets && sops {{file}}
+    cd {{quote(ROOT / 'kleinbem-secrets')}} && sops {{quote(file)}}
