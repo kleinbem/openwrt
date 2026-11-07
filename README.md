@@ -6,7 +6,7 @@ Entry point and conductor for the federated OpenWrt router infrastructure — a 
 
 - **`openwrt-builder`**: Custom OpenWrt firmware image generation using the ImageBuilder (pinned release, profile: `bpi-r4`).
 - **`openwrt-config`**: Declarative runtime configuration of OpenWrt routers via Ansible.
-- **`openwrt-secrets`**: SOPS/Age encrypted secrets orchestration and host decryption mechanisms.
+- **`kleinbem-secrets`**: SOPS/Age encrypted secrets for the whole fleet; the router ones live under `openwrt/`.
 - **`docs`**: System ground truth, network maps, and hardware specifications.
 
 ## 🚀 Getting Started
@@ -20,7 +20,7 @@ Entry point and conductor for the federated OpenWrt router infrastructure — a 
 2. **Enter the Workspace**:
    ```bash
    direnv allow                              # Recommended
-   nix develop ../nix/nix-devshells#openwrt  # Pure fallback
+   nix develop ../nix-devshells#openwrt      # Pure fallback
    ```
    The shell comes from the shared `nix-devshells` repo and loads `just`, `ansible`, `ansible-lint`, `sops`, `age`, `gum`, `fzf`, and friends.
 
@@ -40,7 +40,7 @@ Entry point and conductor for the federated OpenWrt router infrastructure — a 
    ```bash
    just provision
    ```
-   *(Executes Ansible playbooks against the inventory generated from `../nix/nix-config/inventory.nix`.)*
+   *(Executes Ansible playbooks against the inventory generated from `../nix-config/inventory.nix`.)*
 
 ## 🛠 Maintenance
 

@@ -10,8 +10,9 @@ auto-deploys. The OpenWrt side already emits everything this needs.
   collectors), scraped by the fleet Prometheus (`nix-config` monitoring
   `nodeTargets` include core-gateway + ap-upstairs). Local RRD via collectd +
   `luci-app-statistics`; per-host bandwidth via `nlbwmon`.
-- **Logs** → remote syslog (`roles/common`, set `remote_syslog_ip`), so router
-  logs land in a fleet collector and survive reboots.
+- **Logs** → remote syslog is supported (`roles/common`) but off until a fleet
+  collector exists and `remote_syslog_ip` is set (empty by default); only then
+  do router logs survive reboots.
 - **Security events** → banIP (edge blocks) + (future) CrowdSec, both to syslog.
 
 ## Where the SSDs fit
