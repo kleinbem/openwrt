@@ -63,11 +63,11 @@ This document serves as the ground truth for the OpenWrt router configuration.
   taken over routing. Revert = nmrpflash with a stock Netgear `.img`.
 
 ## Network Map
-- **Primary Subnet**: `10.0.0.0/16`, VLAN-segmented (infra/trusted/iot/cameras/guest/work — see docs/NETWORK_PLAN.md). `192.168.1.0/24` is bench-bootstrap only.
+- **Address space**: `10.0.0.0/16`, one `/24` per VLAN (infra `10.0.0.0/24`, trusted/iot/cameras/guest/work on their own — see docs/NETWORK_PLAN.md). `192.168.1.0/24` is bench-bootstrap only.
 - **Gateway (core-gateway)**: 10.0.0.1 (bench bootstrap: 192.168.1.1)
 - **Access Point (ap-upstairs)**: 10.0.0.2 (**LXC Host**, NVMe storage @ `/srv/lxc`)
 - LXC "brain" containers dropped 2026-07-18 (never deployed; ap-upstairs keeps LXC capability + NVMe, dormant)
-- Naming scheme: role + location — the single gateway is `core-gateway`, extenders are `ap-<location>`; source of truth `../nix/nix-config/inventory.nix`
+- Naming scheme: role + location — the single gateway is `core-gateway`, extenders are `ap-<location>`; source of truth `../nix-config/inventory.nix`
 
 ## Wireless (Wi-Fi 7)
 - **Layout** (migration-safe, MPSK — password picks the VLAN): `16CVG` (WPA2,
@@ -106,5 +106,5 @@ This document serves as the ground truth for the OpenWrt router configuration.
   generator emits `[openwrt]` (+ per-host `mgmt_ip`) and `[board_<board>]`
   groups that select `group_vars/board_<board>.yml`.
 - **Boot**: eMMC (SD = installer/rescue; NVMe on ap-upstairs = LXC data). See docs/NETWORK_PLAN.md.
-- **Configuration**: Applied via Ansible in `openwrt-config/`; inventory generated from `../nix/nix-config/inventory.nix` (`just maintenance::sync-inventory`)
+- **Configuration**: Applied via Ansible in `openwrt-config/`; inventory generated from `../nix-config/inventory.nix` (`just maintenance::sync-inventory`)
 - **LXC on ap-upstairs**: capability retained (NVMe `/srv/lxc`) but dormant — the NixOS "brain" containers were dropped 2026-07-18 (fleet hosts the services).

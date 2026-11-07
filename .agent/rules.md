@@ -13,14 +13,14 @@
 - **Namespaces**: Use namespaced commands for clarity (e.g., `just config::provision`, `just maintenance::check-all`).
 - **jj-first**: VCS operations go through `just jj::*` (status-all, save-all, push-all, ship). Sub-repos are standalone git+jj repos from `repos.nix`, not submodules.
 - **Secrets**: Never commit plain-text secrets. Use SOPS with age/ssh keys.
-- **Cross-Workspace**: Note that `openwrt-config` and `openwrt-secrets` are also visible in the `nix.code-workspace` to allow for unified infrastructure management.
+- **Cross-Workspace**: `openwrt-config` and `kleinbem-secrets` are also visible in the `nix.code-workspace` to allow for unified infrastructure management.
 
 ## Architecture
-- **Control Plane**: This repo is the entry point for all router operations. Tooling-only — no `flake.nix` here; the devshell comes from `../nix/nix-devshells#openwrt`.
+- **Control Plane**: This repo is the entry point for all router operations. Tooling-only — no `flake.nix` here; the devshell comes from `../nix-devshells#openwrt`.
 - **Sub-repos**:
     - `openwrt-builder`: Logic for generating the firmware image.
     - `openwrt-config`: Declarative state (Ansible) for the running router.
-    - `openwrt-secrets`: Encrypted configuration values.
+    - `kleinbem-secrets`: Encrypted configuration values (router ones under `openwrt/`).
 
 ## System Context
 - **Ground Truth**: Check `docs/SYSTEM_REFERENCE.md` for IP addresses, hardware specs, and VLAN maps.

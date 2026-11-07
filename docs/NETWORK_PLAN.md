@@ -41,7 +41,7 @@ servers/fleet keep their established octets, DHCP pool is `.100–.199`.
 | 10.0.0.30 | nasbook       | NAS + Tang                             |
 
 ¹ `.5` can't move — the clevis LUKS binding is anchored to nixos-nvme/Tang
-  there. Source of truth: `../nix/nix-config/inventory.nix`.
+  there. Source of truth: `../nix-config/inventory.nix`.
 
 > Bench bootstrap: the BPI-R4 firmware still first-boots at `192.168.1.1` (the
 > ImageBuilder default). For the one-time bench provisioning, reach it there
@@ -129,7 +129,9 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
    as we could verify) — and HW offload is deliberately OFF here for SQM, so
    the cap bought nothing. `uEnv.txt` carries no `mem=`; at the bench make
    sure no SAVED U-Boot environment still has one (`printenv bootargs` on the
-   serial console, `env default -a; saveenv` if it does). What to watch on
+   serial console; if it does, note the full `printenv` output first, then
+   `setenv bootargs <same value without mem=>; saveenv`. Not
+   `env default -a`: that resets every other variable too). What to watch on
    the first 4 GiB boot: `free -m` ≈ 3.9 GiB and no `mem=` in
    `/proc/cmdline` (the common role asserts both); `dmesg | grep -iE
    'mt7996|mt76|ppe|mtk_eth|swiotlb|dma'` for the Wi-Fi card and ethernet
@@ -142,13 +144,16 @@ server ever sits in another VLAN, infra must allow `tcp/7654` to it
    router's management IP to `10.0.0.1` and drops the bench SSH session
    (expected — reconnect at `10.0.0.1` on an untagged infra port).
 4. **Verify offline:** SSH at `10.0.0.1`; a client on each VLAN pulls a lease in
-   the right subnet; Wi-Fi SSIDs up; `iot`/`guest` can reach the internet but not
-   `trusted`; AdGuard resolves from every VLAN.
+   the right subnet; Wi-Fi SSIDs up; `iot`/`guest` can't reach `trusted`. The
+   bench has no WAN, so internet and AdGuard lookups of outside names wait
+   for step 6.
 5. **Cut over (maintenance window):** power down the current router, move its WAN
    uplink + LAN trunk to the BPI-R4. It boots as `10.0.0.1`; devices renew leases
    into their VLANs and come back online.
-6. **Post-swap:** point the inventory at `10.0.0.1` (it lists the bench address
-   until now — see `../nix/nix-config/inventory.nix`, the generator source).
+6. **Post-swap:** check that `iot`/`guest`/`work` reach the internet and that
+   AdGuard resolves from every VLAN except `work` (local tier, router's own
+   resolver). Point the inventory at `10.0.0.1` (it lists the bench address
+   until now — see `../nix-config/inventory.nix`, the generator source).
 
 ## Open items — status
 
@@ -184,17 +189,19 @@ flashed board confirms them against the board's `port_map` in
    IoT/camera devices don't exist yet, so they're born on MPSK (no dedicated
    `-IoT`/`-Cam` SSIDs); onboard one at a time. DAWN steering; 802.11r on the
    discrete SSIDs (off on MPSK until proven). Map in `group_vars` (`wifi_networks`),
-   passphrases in openwrt-secrets. `roles/network` live.
+   passphrases in kleinbem-secrets. `roles/network` live.
    **End state:** migrate onto `-W3`/`-W2`, then drop `16CVG` (3 SSIDs).
    ⚠️ **Bench-validate:** (a) 25.12 ucode `wpa_psk_file` dynamic-VLAN
    regression (#20355); (b) whether WPA3-SAE clients on `-W3` actually get a
    VLAN — `wpa_psk_file` is the WPA2 mechanism, so SAE clients may need
-   `sae_password`+`vlanid` (else those devices ride `16CVG`/`-W2`). `16CVG` is
-   the reliable WPA3 fallback for trusted throughout.
+   `sae_password`+`vlanid` (else those devices ride `16CVG`/`-W2`). `16CVG`
+   (WPA2) is the reliable fallback for trusted throughout; WPA3 VLAN
+   assignment on `-W3` still needs that validation.
 3. ~~**Wi-Fi regulatory country code**~~ **Resolved** — `IE` (`wifi_country`).
 4. ~~**Camera VLAN**~~ **Resolved 2026-07-08** — kept; Frigate on orin-nano
    (infra) pulls RTSP via the infra→cameras allow. Wired cams on lan3,
-   Wi-Fi cams on the `-Cam` SSID.
+   Wi-Fi cams on MPSK (`16CVG-W2`, or `-W3` once validated) with the cameras
+   password.
 5. ~~**WAN uplink**~~ **Resolved 2026-10-30** — `sfp-wan` (SFP1 cage, a
    copper SFP+ module to the ONT), set in the builder's `uci-defaults` and
    `wan_iface` in `board_bpi_r4.yml`. Replaces the 2026-07-17 `eth1` choice:
@@ -203,5 +210,5 @@ flashed board confirms them against the board's `port_map` in
    `wan` port can't carry. That RJ45 `wan` port stays unassigned as a spare
    (e.g. a future backup WAN).
 6. ~~**Preserve list**~~ **Resolved 2026-07-17** — nothing beyond the fleet's
-   static leases (already in openwrt-secrets ansible-vars); no port-forwards
+   static leases (already in kleinbem-secrets ansible-vars); no port-forwards
    or custom DNS entries carry over.

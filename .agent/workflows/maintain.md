@@ -11,7 +11,7 @@ Use this workflow to keep the meta-repo and its components up to date.
    - Run `just check-all` (offline: linters + ansible syntax + justfile parse).
 
 3. **Bump Firmware Source** (when a new OpenWrt release is out)
-   - Update `BUILDER_URL` + `BUILDER_SHA256` in `openwrt-builder/profiles/bpi-r4.conf`
+   - Update `OPENWRT_RELEASE` + `BUILDER_SHA256` in `openwrt-builder/profiles/bpi-r4.conf`
      (checksum from the release target's `sha256sums` file).
    - Rebuild with `just build bpi-r4`.
 

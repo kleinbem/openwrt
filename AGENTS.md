@@ -4,7 +4,7 @@ Guidance for AI assistants (Claude Code, Gemini CLI, Codex, Aider, Antigravity, 
 
 ## Overview
 
-This is a **meta-workspace dir** — a tooling-only orchestrator for the OpenWrt router infrastructure, mirroring the `../nix` meta-workspace. **There is no `flake.nix` at the meta root.** The meta dir holds `just`, `.agent/`, and the `.envrc` that points direnv at `../nix/nix-devshells#openwrt`. The fleet-wide sub-repo manifest lives at `kleinbem/repos.nix`, not here.
+This is a **meta-workspace dir** — a tooling-only orchestrator for the OpenWrt router infrastructure, mirroring the `../nix` meta-workspace. **There is no `flake.nix` at the meta root.** The meta dir holds `just`, `.agent/`, and the `.envrc` that points direnv at `../nix-devshells#openwrt`. The fleet-wide sub-repo manifest lives at `kleinbem/repos.nix`, not here.
 
 **On a truly fresh clone of just this repo, run `bash tools/bootstrap.sh` first** — `just` itself won't parse until `kleinbem/` exists (the shared `.just/common.just` and `.just/jj.just` are symlinks into it), and `tools/bootstrap.sh` clones `kleinbem/` before handing off to the normal `just jj::bootstrap`. On any machine where `kleinbem/` already exists, `just jj::bootstrap` alone is enough.
 
@@ -15,7 +15,7 @@ All common operations go through `just`. Run `just` (no args) to open an fzf-bas
 ```bash
 # Environment
 direnv allow                            # Load the openwrt shell from nix-devshells
-nix develop ../nix/nix-devshells#openwrt  # Pure fallback (no direnv)
+nix develop ../nix-devshells#openwrt      # Pure fallback (no direnv)
 
 # Firmware & provisioning
 just build bpi-r4                 # Containerized ImageBuilder run → ./dist
@@ -24,8 +24,7 @@ just verify                       # Ansible check mode against the live routers
 
 # Validation & linting (offline — never touches the routers)
 just check-all                    # Linters + ansible syntax + justfile parse
-just maintenance::lint-all        # shellcheck + yamllint + ansible-lint + nixfmt
-just maintenance::format-all      # Format nix files
+just maintenance::lint-all        # shellcheck + yamllint + ansible-lint
 just maintenance::sync-inventory  # Regenerate inventory.ini from nix-config/inventory.nix
 
 # Version Control (Jujutsu / jj operates across all sub-repos)
@@ -57,7 +56,7 @@ All sub-repos are **standalone git+jj repos** (NOT git submodules — see `klein
 ## Ground Truth
 
 - **System reference**: `docs/SYSTEM_REFERENCE.md` — hardware, network map, services.
-- **Inventory**: generated — the master is `../nix/nix-config/inventory.nix`. Never edit `openwrt-config/ansible/inventory.ini` by hand; run `just maintenance::sync-inventory`.
+- **Inventory**: generated — the master is `../nix-config/inventory.nix`. Never edit `openwrt-config/ansible/inventory.ini` by hand; run `just maintenance::sync-inventory`.
 - **Agent rules**: `.agent/rules.md`.
 
 ## Code Standards
