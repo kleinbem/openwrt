@@ -8,8 +8,17 @@ set -euo pipefail
 
 # Two levels up from tools/: past openwrt/ itself, to the true workspace
 # root where kleinbem/ is a sibling (matches {{ROOT}} in the shared justfiles).
+# A jj workspace (openwrt.ws/<name>/) sits one level deeper. common.just walks
+# up to kleinbem/repos.nix instead, which can't work before kleinbem/ is cloned.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+REPO_DIR="$SCRIPT_DIR/.."
+if [[ "$(basename "$ROOT")" == openwrt.ws ]]; then
+    ROOT="$(dirname "$ROOT")"
+    # A workspace's .just symlinks point at openwrt.ws/kleinbem, which doesn't
+    # exist, so run the shared bootstrap from the primary checkout.
+    REPO_DIR="$ROOT/openwrt"
+fi
 
 if [ ! -d "$ROOT/kleinbem" ]; then
     echo "🌱 kleinbem/ missing — cloning it first (everything else depends on it)..."
@@ -20,5 +29,5 @@ else
 fi
 
 echo "▶ Continuing with the normal bootstrap (just jj::bootstrap)..."
-cd "$SCRIPT_DIR/.."
+cd "$REPO_DIR"
 exec just jj::bootstrap "$@"
